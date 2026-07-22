@@ -1,0 +1,355 @@
+<!--
+  Classroom Live — built through an iterative collaboration between
+  Elisa Schaeffer (Dean of Technology and Design, Collège LaSalle Montréal)
+  and Claude (Anthropic). Full attribution note in the footer below.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Classroom Live</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div id="join-overlay">
+  <div class="panel">
+    <h2 data-i18n="join_prompt">Enter your name to join</h2>
+    <input id="join-name-input" data-i18n-placeholder="name_placeholder" placeholder="Your name" maxlength="40" autocomplete="off">
+    <button class="primary" id="join-button" data-i18n="join_button">Join</button>
+  </div>
+</div>
+
+<header id="topbar">
+  <div class="app-title"><span class="dot"></span><span data-i18n="app_name">Classroom Live</span></div>
+  <span class="conn-badge" id="conn-badge" data-state="connecting" data-i18n="connection_connecting">Connecting…</span>
+
+  <button class="drawer-toggle" id="toggle-chat-drawer" data-target="chat" title="Chat">
+    💬<span class="pin-badge" hidden>📌</span>
+  </button>
+  <button class="drawer-toggle" id="toggle-traffic-drawer" data-target="traffic" title="Status">
+    🚦<span class="pin-badge" hidden>📌</span>
+  </button>
+  <button class="drawer-toggle" id="toggle-qna-drawer" data-target="qna" title="Q&amp;A">
+    ❓<span class="pin-badge" hidden>📌</span>
+  </button>
+  <button class="drawer-toggle" id="toggle-timer-drawer" data-target="timer" title="Timer">
+    ⏱<span class="pin-badge" hidden>📌</span>
+  </button>
+
+  <select id="lang-select" title="Language">
+    <option value="en">English</option>
+    <option value="fr">Français (CA)</option>
+    <option value="es">Español</option>
+  </select>
+
+  <select id="theme-select" title="Theme">
+    <option value="light" data-i18n="settings_theme_light">Light</option>
+    <option value="dark" data-i18n="settings_theme_dark">Dark</option>
+  </select>
+
+  <select id="font-select" title="Font">
+    <option value="default" data-i18n="settings_font_default">Default</option>
+    <option value="legible" data-i18n="settings_font_legible">Atkinson Hyperlegible</option>
+    <option value="dyslexic" data-i18n="settings_font_dyslexic">OpenDyslexic</option>
+  </select>
+</header>
+
+<nav id="tabs">
+  <button data-view="whiteboard" class="active" data-i18n="nav_whiteboard">Whiteboard<span class="pin-badge" hidden>📌</span></button>
+  <button data-view="tags" data-i18n="nav_tags">Tag cloud<span class="pin-badge" hidden>📌</span></button>
+  <button data-view="poll" data-i18n="nav_poll">Poll<span class="pin-badge" hidden>📌</span></button>
+  <button data-view="blanks" data-i18n="nav_blanks">Fill blanks<span class="pin-badge" hidden>📌</span></button>
+  <button data-view="order" data-i18n="nav_order">Order the steps<span class="pin-badge" hidden>📌</span></button>
+  <button data-view="spider" data-i18n="nav_spider">Self-assessment<span class="pin-badge" hidden>📌</span></button>
+  <button data-view="groups" data-i18n="nav_groups">Groups<span class="pin-badge" hidden>📌</span></button>
+  <button data-view="admin" data-i18n="nav_admin">Admin</button>
+</nav>
+
+<div id="drawer-backdrop"></div>
+
+<aside class="drawer" id="drawer-chat">
+  <div class="drawer-header">
+    <span data-i18n="nav_chat">Chat</span>
+    <button class="drawer-close" data-target="chat">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div id="chat-messages"></div>
+    <form id="chat-form">
+      <input id="chat-input" data-i18n-placeholder="chat_placeholder" placeholder="Write a message…" autocomplete="off" maxlength="1000">
+      <button class="primary" type="submit" data-i18n="chat_send">Send</button>
+    </form>
+  </div>
+</aside>
+
+<aside class="drawer" id="drawer-traffic">
+  <div class="drawer-header">
+    <span data-i18n="nav_traffic">Status</span>
+    <button class="drawer-close" data-target="traffic">✕</button>
+  </div>
+  <div class="drawer-body">
+    <h2 data-i18n="traffic_your_status">Your status</h2>
+    <div class="traffic-picker">
+      <button class="traffic-btn" data-color="green"><span class="swatch"></span><span data-i18n="traffic_green">Doing OK</span></button>
+      <button class="traffic-btn" data-color="yellow"><span class="swatch"></span><span data-i18n="traffic_yellow">Getting confused</span></button>
+      <button class="traffic-btn" data-color="red"><span class="swatch"></span><span data-i18n="traffic_red">Stuck</span></button>
+      <button class="traffic-btn" data-color="gray"><span class="swatch"></span><span data-i18n="traffic_gray">Away</span></button>
+    </div>
+    <h2 class="traffic-overview-title" data-i18n="traffic_overview">Class overview</h2>
+    <div id="traffic-summary-housing">
+      <div class="summary-lamp" data-color="green" id="lamp-green">0</div>
+      <div class="summary-lamp" data-color="yellow" id="lamp-yellow">0</div>
+      <div class="summary-lamp" data-color="red" id="lamp-red">0</div>
+      <div class="summary-lamp" data-color="gray" id="lamp-gray">0</div>
+    </div>
+    <div id="traffic-grid"></div>
+  </div>
+</aside>
+
+<aside class="drawer" id="drawer-qna">
+  <div class="drawer-header">
+    <span data-i18n="drawer_qna">Q&amp;A</span>
+    <button class="drawer-close" data-target="qna">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div id="qna-body"></div>
+  </div>
+</aside>
+
+<aside class="drawer" id="drawer-timer">
+  <div class="drawer-header">
+    <span data-i18n="drawer_timer">Timer</span>
+    <button class="drawer-close" data-target="timer">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div id="timer-body"></div>
+  </div>
+</aside>
+
+<main id="views">
+
+  <section class="view active" id="view-whiteboard">
+    <div id="whiteboard-toolbar">
+      <input type="color" id="wb-color" value="#2f6690" title="Colour">
+      <input type="range" id="wb-size" min="1" max="20" value="3" title="Size">
+      <button id="wb-tool-pen" class="primary" data-i18n="whiteboard_pen">Pen</button>
+      <button id="wb-tool-postit" data-i18n="whiteboard_postit">Post-it</button>
+      <button id="wb-clear" class="danger" data-i18n="whiteboard_clear" style="margin-left:auto;">Clear board</button>
+    </div>
+    <div id="whiteboard-wrap">
+      <canvas id="whiteboard-canvas"></canvas>
+    </div>
+  </section>
+
+  <section class="view" id="view-tags">
+    <form id="tag-form">
+      <input id="tag-input" data-i18n-placeholder="tag_placeholder" placeholder="Add a word…" maxlength="40" autocomplete="off">
+      <button class="primary" type="submit" data-i18n="tag_add">Add</button>
+    </form>
+    <div id="tag-cloud-display"></div>
+  </section>
+
+  <section class="view" id="view-poll">
+    <div id="poll-body"></div>
+  </section>
+
+  <section class="view" id="view-blanks">
+    <div id="blanks-body"></div>
+  </section>
+
+  <section class="view" id="view-order">
+    <div id="order-body"></div>
+  </section>
+
+  <section class="view" id="view-spider">
+    <div id="spider-body"></div>
+  </section>
+
+  <section class="view" id="view-groups">
+    <div id="groups-body"></div>
+  </section>
+
+  <section class="view" id="view-admin">
+    <h2 data-i18n="admin_title">Admin panel</h2>
+    <div class="admin-grid">
+      <div class="panel">
+        <h3 data-i18n="admin_sessions">Saved sessions</h3>
+        <div id="saved-sessions-list"></div>
+        <div class="field" style="margin-top:1rem;">
+          <label data-i18n="admin_new_session_name">New session name</label>
+          <input id="save-as-name" placeholder="e.g. Week 3 - Databases">
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-save" data-i18n="admin_save">Save current session</button>
+          <button class="danger" id="btn-reset" data-i18n="admin_reset">Reset live session</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_pin_title">Pin a tab for everyone</h3>
+        <p class="hint" data-i18n="admin_pin_hint">Switches every connected learner's view to the tab you pick — a nudge, not a lock, they can navigate away afterwards.</p>
+        <div class="field">
+          <label data-i18n="admin_pin_target">Send everyone to</label>
+          <select id="pin-target-select">
+            <option value="whiteboard" data-i18n="nav_whiteboard">Whiteboard</option>
+            <option value="chat" data-i18n="nav_chat">Chat</option>
+            <option value="traffic" data-i18n="nav_traffic">Status</option>
+            <option value="qna" data-i18n="drawer_qna">Q&amp;A</option>
+            <option value="timer" data-i18n="drawer_timer">Timer</option>
+            <option value="tags" data-i18n="nav_tags">Tag cloud</option>
+            <option value="poll" data-i18n="nav_poll">Poll</option>
+            <option value="blanks" data-i18n="nav_blanks">Fill blanks</option>
+            <option value="order" data-i18n="nav_order">Order the steps</option>
+            <option value="spider" data-i18n="nav_spider">Self-assessment</option>
+            <option value="groups" data-i18n="nav_groups">Groups</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-pin-send" data-i18n="admin_pin_send">Pin &amp; send everyone now</button>
+          <button id="btn-pin-clear" data-i18n="admin_pin_clear">Clear pin</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_poll_new">New poll</h3>
+        <div class="field">
+          <label data-i18n="admin_poll_question">Question</label>
+          <input id="poll-q-input" placeholder="What's confusing so far?">
+        </div>
+        <div class="field">
+          <label data-i18n="admin_poll_options">Options (one per line)</label>
+          <textarea id="poll-options-input" rows="4"></textarea>
+        </div>
+        <div class="field">
+          <label data-i18n="admin_poll_type">Chart type</label>
+          <select id="poll-type-input">
+            <option value="bar">Bar</option>
+            <option value="pie">Pie</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-poll-start" data-i18n="admin_poll_start">Start poll</button>
+          <button id="btn-poll-close" data-i18n="admin_poll_close">Close poll</button>
+        </div>
+        <hr style="border-color: var(--line); margin: 1rem 0;">
+        <button id="btn-clear-tags" data-i18n="admin_clear_tags">Clear tag cloud</button>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_qna_title">Q&amp;A moderation</h3>
+        <div id="admin-qna-list"></div>
+        <button class="danger" id="btn-qna-clear" style="margin-top:0.75rem;" data-i18n="admin_qna_clear">Clear all questions</button>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_groups_title">Random groups</h3>
+        <div class="field">
+          <label data-i18n="admin_groups_mode_label">Grouping method</label>
+          <select id="groups-mode-select">
+            <option value="size" data-i18n="admin_groups_mode_size">Groups of a fixed size</option>
+            <option value="count" data-i18n="admin_groups_mode_count">A fixed number of groups</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-i18n="admin_groups_param_label">Size / count</label>
+          <input type="number" id="groups-param-input" min="1" value="4">
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-groups-make" data-i18n="admin_groups_make">Make groups now</button>
+          <button class="danger" id="btn-groups-clear" data-i18n="admin_groups_clear">Clear groups</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_timer_title">Shared timer</h3>
+        <div class="field">
+          <label data-i18n="admin_timer_minutes_label">Duration (minutes)</label>
+          <input type="number" id="timer-minutes-input" min="0.5" step="0.5" value="5">
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-timer-set" data-i18n="admin_timer_set">Set duration</button>
+          <button id="btn-timer-start" data-i18n="admin_timer_start">Start</button>
+          <button id="btn-timer-pause" data-i18n="admin_timer_pause">Pause</button>
+          <button class="danger" id="btn-timer-reset" data-i18n="admin_timer_reset">Reset</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_blanks_title">Fill-in-the-blanks</h3>
+        <p class="hint" data-i18n="admin_blanks_hint">JSON template — see README for the format.</p>
+        <div class="field">
+          <label data-i18n="admin_blanks_template">Template (JSON)</label>
+          <textarea id="blanks-template-input" rows="8" placeholder='{"title":"...","text":"The {{1}} is ...","answers":{"1":"..."},"distractors":["..."]}'></textarea>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-blanks-load" data-i18n="admin_blanks_load">Load exercise</button>
+          <button class="danger" id="btn-blanks-reset" data-i18n="admin_blanks_reset">Reset pieces</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_order_title">Order the steps</h3>
+        <p class="hint" data-i18n="admin_order_hint">JSON template — see README for the format.</p>
+        <div class="field">
+          <label data-i18n="admin_order_criterion">Ordering criterion</label>
+          <input id="order-criterion-input" placeholder="e.g. Order from first to last">
+        </div>
+        <div class="field">
+          <label data-i18n="admin_order_elements">Elements in correct order (JSON array of strings)</label>
+          <textarea id="order-elements-input" rows="6" placeholder='["First step", "Second step", "Third step"]'></textarea>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-order-load" data-i18n="admin_order_load">Load exercise</button>
+          <button id="btn-order-reveal" data-i18n="admin_order_reveal">Reveal &amp; grade</button>
+          <button class="danger" id="btn-order-reset" data-i18n="admin_order_reset">Reset order</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 data-i18n="admin_spider_title">Self-assessment radar</h3>
+        <p class="hint" data-i18n="admin_spider_hint">JSON template — see README for the format.</p>
+        <div class="field">
+          <label data-i18n="admin_spider_title_field">Title</label>
+          <input id="spider-title-input" placeholder="e.g. Teaching quality self-check">
+        </div>
+        <div class="field">
+          <label data-i18n="admin_spider_axes">Axes (JSON array)</label>
+          <textarea id="spider-axes-input" rows="6" placeholder='[{"id":"1","label":"Clarity","max":5},{"id":"2","label":"Pacing","max":5}]'></textarea>
+        </div>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="primary" id="btn-spider-load" data-i18n="admin_spider_load">Load axes</button>
+          <button class="danger" id="btn-spider-reset" data-i18n="admin_spider_reset">Reset responses</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="appfoot">
+  <details class="ai-attribution">
+    <summary data-i18n="aiAttribTitle">Comment cet outil a été créé</summary>
+    <p data-i18n="aiAttribP1">Cet outil a été construit par une collaboration itérative entre Elisa Schaeffer, Doyenne de la Technologie et du Design au Collège LaSalle Montréal, et Claude (Anthropic), un assistant IA. Le contenu pédagogique, la structure, les fonctionnalités, les priorités et les choix éditoriaux ont été définis, questionnés et affinés par Elisa à chaque étape. Claude a généré le code, proposé des formulations et signalé les incohérences — mais chaque décision substantielle a été prise par un être humain.</p>
+    <p data-i18n="aiAttribP2">Ce n'est pas du contenu IA généré en une seule fois. C'est le résultat d'un dialogue de révision prolongé : chaque session a été lue, critiquée et corrigée. L'outil évolue.</p>
+    <p><strong data-i18n="aiAttribP3Strong">Utilisation réfléchie de l'IA</strong> — <span data-i18n="aiAttribP3Rest">L'IA générative est un outil de travail, non un substitut au jugement professionnel. Ce projet illustre une approche où l'humain reste l'auteur·rice : l'IA amplifie la capacité de production, mais la responsabilité éditoriale, pédagogique et éthique reste entièrement humaine. Dernière mise à jour : juillet 2026.</span></p>
+  </details>
+</footer>
+
+<script src="/static/js/i18n.js"></script>
+<script src="/static/js/ws.js"></script>
+<script src="/static/js/modules/chat.js"></script>
+<script src="/static/js/modules/traffic.js"></script>
+<script src="/static/js/modules/tags.js"></script>
+<script src="/static/js/modules/poll.js"></script>
+<script src="/static/js/modules/whiteboard.js"></script>
+<script src="/static/js/modules/blanks.js"></script>
+<script src="/static/js/modules/order.js"></script>
+<script src="/static/js/modules/spider.js"></script>
+<script src="/static/js/modules/qna.js"></script>
+<script src="/static/js/modules/groups.js"></script>
+<script src="/static/js/modules/timer.js"></script>
+<script src="/static/js/modules/admin.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
