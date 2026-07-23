@@ -65,8 +65,8 @@
   "settings_font_dyslexic": "OpenDyslexic",
   "settings_font_legible": "Atkinson Hyperlegible",
   "settings_language": "Language",
-  "viewer_mode_off": "Viewer mode",
-  "viewer_mode_on": "Viewer mode (on)",
+  "viewer_mode_off": "Presenter mode",
+  "viewer_mode_on": "Presenter mode (on)",
   "chat_blocked_notice": "Message not sent — it contains a word that isn't allowed here.",
   "tag_blocked_notice": "Not added — that word isn't allowed here.",
 

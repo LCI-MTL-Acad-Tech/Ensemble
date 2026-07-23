@@ -1,0 +1,6 @@
+{
+  "title": "How confident are you feeling right now?",
+  "axes": [
+    {"id": "1", "label": "Confidence", "max": 5}
+  ]
+}

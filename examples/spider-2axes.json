@@ -1,0 +1,7 @@
+{
+  "title": "Where are you with today's material?",
+  "axes": [
+    {"id": "1", "label": "Understanding", "max": 5},
+    {"id": "2", "label": "Confidence applying it", "max": 5}
+  ]
+}

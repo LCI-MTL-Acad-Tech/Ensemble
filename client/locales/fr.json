@@ -65,8 +65,8 @@
   "settings_font_dyslexic": "OpenDyslexic",
   "settings_font_legible": "Atkinson Hyperlegible",
   "settings_language": "Langue",
-  "viewer_mode_off": "Mode spectateur",
-  "viewer_mode_on": "Mode spectateur (actif)",
+  "viewer_mode_off": "Mode présentateur",
+  "viewer_mode_on": "Mode présentateur (actif)",
   "chat_blocked_notice": "Message non envoyé — il contient un mot qui n'est pas permis ici.",
   "tag_blocked_notice": "Non ajouté — ce mot n'est pas permis ici.",
 

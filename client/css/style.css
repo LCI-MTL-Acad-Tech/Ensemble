@@ -564,10 +564,23 @@ nav#tabs button.just-activated {
 #viewer-mode-toggle { font-size: 0.85rem; }
 #viewer-mode-toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* Viewer mode: gray out and disable every control inside the content
-   areas (tabs' content + drawer bodies) so a passive/projector view can't
-   accidentally change anything, while navigation (tabs, drawer toggles,
-   theme/font/language, the toggle itself) stays fully usable. */
+/* Presenter mode: the same "look but don't touch" behaviour as before —
+   gray out and disable every control inside the content areas (tabs'
+   content + drawer bodies) so a passive/projector view can't
+   accidentally change anything — plus two things aimed specifically at
+   showing this on a big screen: the whole UI scales up (most sizing in
+   this stylesheet is in rem, so bumping the root font-size cascades
+   through nearly everything for free), and the font/language pickers
+   disappear since they're personal-comfort settings nobody needs while
+   presenting to a room. Theme (dark/light) stays, since that genuinely
+   matters for projector visibility depending on room lighting. */
+html.viewer-mode {
+  font-size: 118%;
+}
+body.viewer-mode #lang-select,
+body.viewer-mode #font-select {
+  display: none;
+}
 body.viewer-mode #views button,
 body.viewer-mode #views input,
 body.viewer-mode #views textarea,

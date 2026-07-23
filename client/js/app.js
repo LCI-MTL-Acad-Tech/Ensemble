@@ -86,14 +86,17 @@
   }
 
   function initViewerMode() {
-    // A passive/projector view: any client can flip this on to gray out
-    // and disable every control (forms, drag handles, drawing, votes)
-    // while keeping navigation — tabs, drawers, and the settings controls
-    // in the topbar — fully usable, so you can still look around.
+    // Presenter mode: the same "look but don't touch" toggle as before —
+    // grays out and disables every control while keeping navigation
+    // usable — but now also scales the whole UI up and hides the
+    // settings that don't matter while presenting to a room, so a
+    // laptop screen looks reasonable on a projector without anyone
+    // needing to fiddle with browser zoom.
     const btn = document.getElementById("viewer-mode-toggle");
     let on = false;
     btn.addEventListener("click", () => {
       on = !on;
+      document.documentElement.classList.toggle("viewer-mode", on);
       document.body.classList.toggle("viewer-mode", on);
       btn.textContent = on ? `👁 ${I18N.t("viewer_mode_on")}` : `👁 ${I18N.t("viewer_mode_off")}`;
       btn.classList.toggle("active", on);

@@ -1,0 +1,10 @@
+{
+  "title": "Teaching quality self-check",
+  "axes": [
+    {"id": "1", "label": "Clarity", "max": 5},
+    {"id": "2", "label": "Pacing", "max": 5},
+    {"id": "3", "label": "Engagement", "max": 5},
+    {"id": "4", "label": "Feedback quality", "max": 5},
+    {"id": "5", "label": "Practical relevance", "max": 5}
+  ]
+}

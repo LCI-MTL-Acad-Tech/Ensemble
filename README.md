@@ -71,16 +71,22 @@ place):
   `control.py`, and everyone's display ticks in sync since the server
   (not each browser) is the authority on how much time is left.
 
-**Viewer mode** — a 👁 toggle in the top bar, available to *any* client,
-not just the instructor. Flipping it on grays out and disables every
-control (forms, drag handles, drawing, votes, reactions) while leaving
-navigation — tabs, drawers, theme/font/language — fully usable. Useful
-for a projector display, or for your own device when you want to look
-without accidentally changing something. Since it's just a display mode
-anyone can flip on their own screen, it also doubles as a live
-chat/Q&A viewer for the instructor — no separate moderation app needed
-just to *watch* what's happening (see **Do we need a moderation GUI?**
-below for the fuller answer).
+**Presenter mode** — a 👁 toggle in the top bar, available to *any*
+client, not just the instructor. Flipping it on does two things at once:
+it grays out and disables every control (forms, drag handles, drawing,
+votes, reactions) so nothing gets accidentally changed, and it scales the
+whole UI up while hiding the font/language pickers (personal-comfort
+settings nobody needs while presenting) — theme stays, since dark/light
+genuinely matters for projector visibility depending on room lighting.
+Tabs, drawers, and the toggle itself stay fully usable throughout. The
+intended use: put a laptop on the projector, flip this on, and switch
+between tabs to show the room's current activity — the whiteboard, poll
+results, the tag cloud — at a size that reads from the back of the room,
+without worrying about bumping something mid-lesson. Since it's just a
+display mode anyone can flip on their own screen, it also doubles as a
+live chat/Q&A viewer for the instructor — no separate moderation app
+needed just to *watch* what's happening (see **Do we need a moderation
+GUI?** below for the fuller answer).
 
 **Instructor control** happens from `control.py`, a small command-line
 tool — not a panel in the browser. See **Instructor control** below for
@@ -341,7 +347,7 @@ ready to save as a file and try as-is.
 - **Reset order** reshuffles fresh, clearing reactions, the finished
   flag, and the reveal.
 
-### Self-assessment radar
+### Self-assessment radar (or gauge, or two-axis chart)
 
 ```json
 {
@@ -355,19 +361,35 @@ ready to save as a file and try as-is.
 ```
 
 (Title is a separate field in the admin form; `axes` goes in its own
-textarea.)
+textarea.) Three ready-to-use example templates are in `examples/`:
+`spider-1axis.json`, `spider-2axes.json`, `spider-5axes.json` — load any
+of them with `python control.py spider load examples/spider-1axis.json`
+to try each layout immediately.
 
-- Each axis needs an `id`, a `label`, and a `max` (slider goes 0–`max`).
-  Any number of axes works.
+- Each axis needs an `id`, a `label`, and a `max` (slider/gauge goes
+  0–`max`).
 - Sliders default to each axis's midpoint the moment someone opens the
   tab, and that gets sent immediately, so they're counted in the group
   view right away; adjusting from there updates live for everyone.
-- The group view draws, per axis: a light band from the class minimum to
-  maximum, a darker band for the interquartile range (Q1–Q3), a dashed
-  median line, and each viewer's *own* ratings as a bold unfilled outline
-  on top.
-- This chart is an original interpretation of a "quartile polygon" view,
-  not a pixel-for-pixel match to any specific existing dashboard.
+- **The layout changes automatically depending on how many axes are
+  loaded:**
+  - **1 axis** → a half-circle gauge, like a speedometer. Instead of
+    dragging a slider, you drag a needle around the arc (a slider is
+    still there too, for precise/keyboard input — both stay in sync).
+    The class spread is drawn as colored zones along the arc rather than
+    nested bands: a light zone spanning the class min–max, a darker zone
+    for the interquartile range, and a dashed tick at the median. Your
+    own value is the solid needle.
+  - **2 axes** → the usual radar polygon, but the two axes point to the
+    top-left (135°) and top-right (45°) rather than straight up and
+    straight down, which is what even spacing would otherwise produce
+    for exactly two axes — much more readable.
+  - **3+ axes** → the standard evenly-spaced radar polygon: a light band
+    from the class minimum to maximum, a darker band for the
+    interquartile range (Q1–Q3), a dashed median line, and each viewer's
+    *own* ratings as a bold unfilled outline on top.
+- This chart is an original interpretation of a "quartile" view, not a
+  pixel-for-pixel match to any specific existing dashboard.
 - **Reset responses** clears everyone's ratings but keeps the axes
   loaded.
 
@@ -431,7 +453,7 @@ Short answer: not a separate one. Two things cover what a dedicated
 moderation window would do:
 
 - **Watching** what's happening (chat, Q&A) is just the ordinary browser
-  view — open it like anyone would, flip on **Viewer mode** so nothing
+  view — open it like anyone would, flip on **Presenter mode** so nothing
   gets accidentally clicked, and open the Chat or Q&A drawer. No special
   build needed for that; it's the same page everyone else is using.
 - **Acting** on it (answering/approving/deleting a question, clearing the
@@ -470,6 +492,7 @@ classroom-tool/
 │                              whiteboard, blanks, order, spider, groups, qna,
 │                              timer) — no admin module; there's no browser admin UI
 ├── sessions/                 Saved session JSON files
+├── examples/                 Ready-to-load exercise/spider templates to try things out
 └── requirements.txt
 ```
 
