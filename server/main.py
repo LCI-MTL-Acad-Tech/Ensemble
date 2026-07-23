@@ -27,6 +27,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from . import moderation as mod
 from . import session_manager as sm
 
 BASE_DIR = Path(__file__).parent.parent
@@ -36,6 +37,7 @@ app = FastAPI(title="Classroom Interaction Tool")
 
 # The single live session, created blank on server start.
 live = sm.Session(name="Untitled session")
+moderation_list = mod.ModerationList()
 
 
 class ConnectionManager:
@@ -132,6 +134,9 @@ async def handle_message(client_id: str, msg: dict) -> None:
         text = str(msg.get("text", "")).strip()[:1000]
         if not text:
             return
+        if moderation_list.contains_blocked_word(text):
+            await manager.send_to(client_id, {"type": "chat_blocked"})
+            return
         parent_id = msg.get("parent_id")
         parent_id = str(parent_id) if parent_id else None
         entry = live.add_chat_message(name, text, parent_id)
@@ -150,6 +155,9 @@ async def handle_message(client_id: str, msg: dict) -> None:
 
     elif mtype == "tag_add":
         word = str(msg.get("word", ""))
+        if moderation_list.contains_blocked_word(word):
+            await manager.send_to(client_id, {"type": "tag_blocked"})
+            return
         entry = live.add_tag(word)
         if entry:
             await manager.broadcast({"type": "tag_cloud_update", "words": live.state["tag_cloud"]["words"]})
@@ -165,8 +173,10 @@ async def handle_message(client_id: str, msg: dict) -> None:
             "color": msg.get("color", "#000000"),
             "size": msg.get("size", 3),
             "points": msg.get("points", []),
+            "owner": client_id,
         }
         live.add_stroke(stroke)
+        live.push_whiteboard_history(client_id, "stroke", stroke["id"])
         await manager.broadcast({"type": "whiteboard_stroke_start", "stroke": stroke}, exclude=client_id)
 
     elif mtype == "whiteboard_stroke_points":
@@ -183,15 +193,28 @@ async def handle_message(client_id: str, msg: dict) -> None:
             "x": msg.get("x", 20),
             "y": msg.get("y", 20),
             "color": msg.get("color", "#fff59d"),
+            "text_color": msg.get("text_color", "#1b2330"),
+            "font_size": msg.get("font_size", 14),
             "text": msg.get("text", ""),
         }
-        live.upsert_postit(postit)
+        created = live.upsert_postit(postit, client_id)
+        if created:
+            live.push_whiteboard_history(client_id, "postit", postit["id"])
         await manager.broadcast({"type": "whiteboard_postit", "postit": postit}, exclude=client_id)
 
     elif mtype == "whiteboard_postit_delete":
         postit_id = str(msg.get("id", ""))
         live.remove_postit(postit_id)
         await manager.broadcast({"type": "whiteboard_postit_delete", "id": postit_id}, exclude=client_id)
+
+    elif mtype == "whiteboard_undo":
+        entry = live.undo_whiteboard_action(client_id)
+        if entry:
+            await manager.broadcast({"type": "whiteboard_undo", "kind": entry["type"], "id": entry["id"]})
+
+    elif mtype == "whiteboard_erase_mine":
+        live.erase_client_whiteboard_work(client_id)
+        await manager.broadcast({"type": "whiteboard_replace", "whiteboard": live.state["whiteboard"]})
 
     elif mtype == "blanks_move_piece":
         name = manager.names.get(client_id, "Anonymous")
@@ -244,9 +267,10 @@ async def handle_message(client_id: str, msg: dict) -> None:
         if q:
             await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
 
-    elif mtype == "qna_upvote":
+    elif mtype == "qna_react":
         question_id = str(msg.get("question_id", ""))
-        if live.toggle_qna_upvote(question_id, client_id):
+        reaction = msg.get("reaction")
+        if live.react_to_qna_question(question_id, client_id, reaction):
             await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
 
 
@@ -303,6 +327,14 @@ class OrderLoadRequest(BaseModel):
 
 class PinRequest(BaseModel):
     target: str
+
+
+class ModerationLoadRequest(BaseModel):
+    words: list[str]
+
+
+class ModerationWordRequest(BaseModel):
+    word: str
 
 
 class QnaModerateRequest(BaseModel):
@@ -463,9 +495,45 @@ async def api_clear_pin():
     return {"ok": True}
 
 
+@app.get("/api/admin/moderation")
+async def api_moderation_list():
+    return {"words": moderation_list.to_list()}
+
+
+@app.post("/api/admin/moderation/add")
+async def api_moderation_add(req: ModerationWordRequest):
+    added = moderation_list.add(req.word)
+    return {"ok": True, "added": added, "words": moderation_list.to_list()}
+
+
+@app.post("/api/admin/moderation/remove")
+async def api_moderation_remove(req: ModerationWordRequest):
+    removed = moderation_list.remove(req.word)
+    return {"ok": True, "removed": removed, "words": moderation_list.to_list()}
+
+
+@app.post("/api/admin/moderation/load")
+async def api_moderation_load(req: ModerationLoadRequest):
+    moderation_list.load_words(req.words)
+    return {"ok": True, "words": moderation_list.to_list()}
+
+
+@app.post("/api/admin/moderation/reset")
+async def api_moderation_reset():
+    moderation_list.load_defaults()
+    return {"ok": True, "words": moderation_list.to_list()}
+
+
 @app.post("/api/admin/qna/answer")
 async def api_qna_answer(req: QnaModerateRequest):
     live.set_qna_answered(req.question_id, req.answered)
+    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    return {"ok": True}
+
+
+@app.post("/api/admin/qna/approve")
+async def api_qna_approve(req: QnaModerateRequest):
+    live.set_qna_approved(req.question_id, req.answered)
     await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
     return {"ok": True}
 

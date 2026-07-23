@@ -1,0 +1,10 @@
+{
+  "_comment": "Starter denylist for the chat filter — deliberately short and editable, not an exhaustive moderation-grade list. Add/remove live with control.py moderation add/remove, or replace entirely with control.py moderation load <file>. Matching is whole-word and case-insensitive.",
+  "words": [
+    "fuck", "fucking", "fucker", "shit", "bitch", "asshole", "bastard",
+    "dick", "cunt", "whore", "slut", "motherfucker",
+    "putain", "merde", "connard", "connasse", "salope", "encule", "enculé",
+    "tabarnak", "calisse", "câlisse", "ostie", "criss",
+    "puta", "mierda", "cabron", "cabrón", "pendejo", "gilipollas", "joder", "coño"
+  ]
+}

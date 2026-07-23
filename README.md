@@ -11,11 +11,25 @@ small enough that you can read the whole server in one sitting.
 
 ## What it does
 
-**Full-page modalities** (the tabs across the top):
+**Full-page modalities** (the tabs across the top — Poll, Fill blanks,
+Order the steps, Self-assessment, and Groups stay hidden until the
+instructor actually loads something into them; see **Tab visibility**
+below):
 
-- **Whiteboard** — freehand drawing (synced stroke-by-stroke) plus
-  draggable post-it notes, all shared live.
-- **Tag cloud** — anyone adds a word; size scales with frequency.
+- **Whiteboard** — freehand drawing plus draggable post-it notes, all
+  shared live. The Pen and Post-it tools each get their own contextual
+  controls: the pen has a colour picker and a thickness slider; a note
+  has its own background colour, text colour, and text size, chosen
+  *before* you place it, with high-contrast defaults (pale yellow
+  background, near-black text). Anyone can **undo** their own last action
+  (a stroke or a note) or **erase my work** (everything *they* added, in
+  one go) — but clearing the *whole* board for everyone is
+  instructor-only, from `control.py`, not a button in the browser.
+- **Tag cloud** — anyone adds a word; the most frequent word sits at the
+  center at its full size, and everything else spirals outward around it
+  (an Archimedean-spiral layout, same principle as d3-cloud), sized by
+  frequency and colour-cycled for visual variety. Filtered by the same
+  chat moderation word list (see below).
 - **Poll** — instructor asks a question with options, bar or pie chart,
   live vote counts.
 - **Fill in the blanks** — a shared pool of draggable pieces (correct
@@ -36,31 +50,85 @@ place):
 
 - **Chat** — shared chat with lightweight one-level threading: reply to
   any message and the reply attaches to that message's thread, collapsed
-  by default behind a "N replies" toggle. Works well for a "muddiest
-  point" prompt — post the question as a top-level message, let people
-  thread their answers under it.
-- **Status** (traffic light) — green/yellow/red/gray self-report, with a
-  live class-overview readout.
-- **Q&A** — anonymous question queue with upvoting. Nobody's name is ever
-  attached to a question, and upvotes are just deduplicated per
-  connection — the server doesn't store who asked or who upvoted.
+  by default behind a "N replies" toggle. Filtered by the chat moderation
+  word list (see below) — a blocked message never reaches anyone but the
+  person who tried to send it. Works well for a "muddiest point" prompt —
+  post the question as a top-level message, let people thread their
+  answers under it.
+- **Status** (traffic light) — one vertical stack of lamp buttons doubles
+  as both the picker and the overview: click a lamp (🙂 doing ok, 😕
+  confused, 🆘 stuck, 💤 away) to set your own status, the number shows
+  how many people are currently on it, and a small ▸ marks your own pick.
+- **Q&A** — anonymous question queue with 👍/👎 reactions. Nobody's name
+  is ever attached to a question or a reaction — the server doesn't store
+  who asked or who reacted. Sorted unanswered-first, then by (👍 − 👎).
+  The instructor can additionally mark a question **approved** (★) from
+  `control.py` — a curation signal that's independent of "answered": a
+  question can be worth everyone's attention whether or not it's been
+  dealt with yet.
 - **Timer** — a shared countdown for group work. View-only for students;
-  the instructor sets the duration and starts/pauses/resets it from the
-  Admin tab, and everyone's display ticks in sync since the server (not
-  each browser) is the authority on how much time is left.
+  the instructor sets the duration and starts/pauses/resets it from
+  `control.py`, and everyone's display ticks in sync since the server
+  (not each browser) is the authority on how much time is left.
 
-**Instructor controls** (Admin tab):
+**Viewer mode** — a 👁 toggle in the top bar, available to *any* client,
+not just the instructor. Flipping it on grays out and disables every
+control (forms, drag handles, drawing, votes, reactions) while leaving
+navigation — tabs, drawers, theme/font/language — fully usable. Useful
+for a projector display, or for your own device when you want to look
+without accidentally changing something. Since it's just a display mode
+anyone can flip on their own screen, it also doubles as a live
+chat/Q&A viewer for the instructor — no separate moderation app needed
+just to *watch* what's happening (see **Do we need a moderation GUI?**
+below for the fuller answer).
 
-- Save / restore / duplicate-as-template / reset the live session.
-- **Pin a tab for everyone** — jumps every connected person's view to the
-  tab you pick. It's a nudge, not a lock: they can navigate elsewhere
-  right after, and latecomers aren't yanked around by a stale pin, but
-  they do see a small 📌 badge marking where the room currently is.
-- Per-exercise controls: start/close polls, load/reset the fill-in-the-
-  blanks and ordering exercises, reveal-and-grade the ordering exercise,
-  load/reset the self-assessment axes, clear the tag cloud, moderate the
-  Q&A queue (mark answered / delete / clear all), generate or clear
-  random groups, and set/start/pause/reset the shared timer.
+**Instructor control** happens from `control.py`, a small command-line
+tool — not a panel in the browser. See **Instructor control** below for
+why, and **Chat moderation** for the word-filter feature.
+
+## Tab visibility
+
+Poll, Fill blanks, Order the steps, Self-assessment, and Groups start
+hidden — there's no point showing five empty "nothing loaded yet" tabs to
+a room full of people who just joined. Each one appears automatically the
+moment the instructor loads something into it (`control.py poll start`,
+`blanks load`, etc.), and if that happens while people are already
+looking at the app, the tab doesn't just silently appear — it pulses
+briefly to catch the eye, the same way a pinned tab gets a 📌 badge.
+Whiteboard and Chat/Status/Q&A/Timer aren't gated; they're always there.
+
+## Chat moderation
+
+Every chat message (including replies) is checked against an editable,
+whole-word, case-insensitive denylist before it's stored or broadcast. A
+blocked message never reaches the class — only the person who tried to
+send it gets a quiet private notice ("Message not sent…"), and nothing
+they typed is stored anywhere.
+
+- **Sensible defaults are loaded automatically** the moment the server
+  starts, from `moderation_defaults.json` at the project root — a short,
+  editable starting point covering common profanity in English, French,
+  and Spanish. It is deliberately **not** an exhaustive moderation-grade
+  list; review and extend it for your own context before relying on it.
+- Matching is **whole-word**, so a blocked word like `shit` won't
+  accidentally catch `shiitake`, and `ass` (if you added it) won't catch
+  `class` or `assignment` — no Scunthorpe-problem false positives.
+- The list is **not** tied to session save/restore/reset — it's a
+  standing configuration, not part of any one class's activity, so
+  resetting or restoring a session never touches it.
+- Manage it entirely from `control.py`:
+
+  ```bash
+  python control.py moderation list                  # see the current list
+  python control.py moderation add "some-word"        # add one, live
+  python control.py moderation remove "some-word"      # remove one, live
+  python control.py moderation load custom-list.json   # replace the whole list
+  python control.py moderation save custom-list.json   # write the current list to a file
+  python control.py moderation reset                   # back to the shipped defaults
+  ```
+
+  The load/save file format is the same as `moderation_defaults.json`:
+  `{"words": ["word1", "word2", ...]}`.
 
 ## Requirements
 
@@ -100,6 +168,11 @@ pip install -r requirements.txt
 5. Everyone picks a display name on entry. There's no login, no
    persistence in the browser — closing the tab just means picking a name
    again next time.
+6. In a second terminal on the same machine (or any machine that can
+   reach the server), run `python control.py` for the interactive control
+   menu — this is how you load exercises, start polls, pin tabs, reveal
+   answers, and everything else instructor-side. See **Instructor
+   control** below.
 
 Stop the server with `Ctrl+C` in the terminal it's running in.
 
@@ -134,6 +207,53 @@ keeps data transfer low even on a modest, crowded WiFi network. Whiteboard
 strokes batch their points (~every 60ms while drawing) rather than
 sending one message per pixel for the same reason.
 
+## Instructor control
+
+There's deliberately no admin panel in the browser. Every instructor
+action — loading an exercise, starting a poll, pinning a tab, revealing
+an answer, moderating chat, managing sessions — happens through
+`control.py`, a small command-line tool that talks to the server's REST
+API. Two ways to use it:
+
+**One-off commands**, for scripting or quick single actions:
+
+```bash
+python control.py status                 # what's currently loaded/active
+python control.py pin poll                # send everyone to the Poll tab
+python control.py order reveal            # show the right answer
+python control.py session save "Week 3"
+python control.py poll start --question "How's the pace?" --options "too slow,just right,too fast"
+```
+
+**Interactive menu**, if you'd rather not remember exact syntax — run it
+with no arguments:
+
+```bash
+python control.py
+```
+
+This drops into a numbered menu; pick a number or type a full command
+line directly. `python control.py --help` (or `python control.py
+<command> --help`) lists every command and its options.
+
+By default it talks to `http://localhost:8000` — the assumption is you're
+running it on the same laptop as the server. If you're controlling the
+session from a different machine on the same network, pass `--url`:
+
+```bash
+python control.py --url http://<server-laptop-LAN-IP>:8000 status
+```
+
+**Silent add vs. add-and-pin.** Loading an exercise (`poll start`, `blanks
+load`, `order load`, `spider load`, `groups make`) is silent by default —
+it just makes the tab appear (see **Tab visibility**), without forcing
+anyone's screen to jump there. Add `--pin` to do both in one command:
+
+```bash
+python control.py order load steps.json          # loads quietly, tab appears
+python control.py order load steps.json --pin    # loads AND sends everyone there now
+```
+
 ## Managing sessions
 
 A **session** is everything currently live: chat history, statuses, tag
@@ -164,8 +284,9 @@ git add -f sessions/my-template.json
 
 ## Exercise template formats
 
-These get pasted as JSON into the Admin tab. All three examples below are
-complete and ready to paste as-is to try things out.
+These are JSON files you point `control.py` at (e.g. `python control.py
+order load my-exercise.json`). All three examples below are complete and
+ready to save as a file and try as-is.
 
 ### Fill-in-the-blanks
 
@@ -272,39 +393,69 @@ polarized per question — often more useful than a plain right/wrong tally,
 since a question everyone's confidently wrong about is a very different
 problem from one where people are unsure but split.
 
-## Q&A, groups, and the timer
+## Q&A, groups, timer, and the whiteboard-wipe
 
-These three don't need a JSON template — they're driven entirely from the
-Admin tab:
+These don't need a JSON template — they're driven entirely from
+`control.py`:
 
 - **Q&A** — nothing to load; the queue just starts empty and fills up as
-  people ask. Moderate from the Admin tab: mark a question answered
-  (it stays visible but grays out and sinks to the bottom, so there's
-  still a record of what was asked), delete one outright, or clear the
-  whole queue between topics. Anonymity is structural, not just a UI
-  choice — the server never stores a name against a question or an
-  upvote, so there's nothing to accidentally leak later.
-- **Groups** — pick "groups of a fixed size" (e.g. 4 people each,
-  however many groups that takes) or "a fixed number of groups" (e.g.
-  exactly 3 groups, sized as evenly as possible), enter the number, and
-  click **Make groups now**. It only groups people who are currently
-  connected and have joined with a name — if someone joins after the
-  fact, re-run it. **Clear groups** empties the Groups tab back out.
-- **Timer** — set a duration in minutes and hit **Start**; **Pause**
-  freezes the remaining time (rather than losing it) so you can resume
-  later; **Reset** goes back to the last duration you set, unstarted. The
-  countdown is computed from a server timestamp rather than each
-  browser's own clock, so everyone's display agrees down to network
-  latency, and a phone that was asleep for 10 seconds still shows the
-  right number the moment it wakes up.
+  people ask, reacted to with 👍/👎. Moderate with `python control.py qna
+  list` / `qna answer <id>` (toggle answered — it stays visible but grays
+  out and sinks to the bottom, so there's still a record of what was
+  asked) / `qna approve <id>` (toggle a ★ curation mark, independent of
+  answered) / `qna delete <id>` / `qna clear`. Anonymity is structural,
+  not just a UI choice — the server never stores a name against a
+  question or a reaction, so there's nothing to accidentally leak later.
+- **Groups** — `python control.py groups make --mode size --param 4` for
+  groups of 4 people each (however many groups that takes), or
+  `--mode count --param 3` for exactly 3 groups sized as evenly as
+  possible. It only groups people who are currently connected and have
+  joined with a name — if someone joins after the fact, re-run it.
+  `python control.py groups clear` empties the Groups tab back out.
+- **Timer** — `python control.py timer set 5` (minutes) then `timer
+  start`; `timer pause` freezes the remaining time (rather than losing
+  it) so you can resume later; `timer reset` goes back to the last
+  duration you set, unstarted. The countdown is computed from a server
+  timestamp rather than each browser's own clock, so everyone's display
+  agrees down to network latency, and a phone that was asleep for 10
+  seconds still shows the right number the moment it wakes up.
+- **Whiteboard "clear for everyone"** — `python control.py whiteboard
+  clear` wipes the whole board. This is the *only* way to do that;
+  clients only get **Undo** (their own last stroke or note) and **Erase
+  my work** (everything they've personally added), never a wipe of
+  anyone else's contributions.
+
+## Do we need a moderation GUI?
+
+Short answer: not a separate one. Two things cover what a dedicated
+moderation window would do:
+
+- **Watching** what's happening (chat, Q&A) is just the ordinary browser
+  view — open it like anyone would, flip on **Viewer mode** so nothing
+  gets accidentally clicked, and open the Chat or Q&A drawer. No special
+  build needed for that; it's the same page everyone else is using.
+- **Acting** on it (answering/approving/deleting a question, clearing the
+  whole board) is what `control.py` is for, and already covers the whole
+  surface: `qna answer/approve/delete/clear`, `whiteboard clear`,
+  `moderation add/remove/load/save/reset` for the chat word filter.
+
+If down the line a point-and-click experience genuinely earns its keep —
+say, moderating from a phone without a terminal handy — a lightweight
+browser page reusing the existing WebSocket connection and CSS, scoped to
+just Chat + Q&A, would be a reasonable follow-up. It isn't built now
+because nothing in the current workflow is missing without it; happy to
+build it if that changes.
 
 ## Architecture
 
 ```
 classroom-tool/
+├── control.py                Instructor CLI — talks to the REST admin API (see below)
+├── moderation_defaults.json  Starter chat word-filter list, loaded at server startup
 ├── server/
 │   ├── main.py              FastAPI app: WebSocket hub + REST admin endpoints
-│   └── session_manager.py   Session state, mutations, JSON save/load
+│   ├── session_manager.py   Session state, mutations, JSON save/load
+│   └── moderation.py         Chat word-filter list: load/add/remove/match
 ├── client/
 │   ├── index.html           Single page: tabs, drawers, join flow, footer
 │   ├── css/style.css        All styling — theme tokens, one file
@@ -313,10 +464,11 @@ classroom-tool/
 │   └── js/
 │       ├── i18n.js           Locale loader + data-i18n DOM binder
 │       ├── ws.js              WebSocket wrapper (auto-reconnect, pub/sub)
-│       ├── app.js             Orchestrator: tabs, drawers, pin sync, join, settings
+│       ├── app.js             Orchestrator: tabs (incl. gating/pulse), drawers,
+│                              viewer mode, pin sync, join, settings
 │       └── modules/           One file per feature (chat, traffic, tags, poll,
 │                              whiteboard, blanks, order, spider, groups, qna,
-│                              timer, admin)
+│                              timer) — no admin module; there's no browser admin UI
 ├── sessions/                 Saved session JSON files
 └── requirements.txt
 ```
@@ -324,19 +476,26 @@ classroom-tool/
 **Server → client protocol**: a single WebSocket connection per client at
 `/ws`. On connect, the server sends `welcome` (with your `client_id`) and
 `session_state` (the full current state). After that, each action
-broadcasts a small typed message (`chat_message`, `traffic_light_update`,
-`blanks_update`, `order_update`, `spider_update`, `qna_update`,
-`groups_update`, `timer_update`, `pin_update`, etc.) to every connected
-client; each client-side module listens for the message types it cares
-about and re-renders.
+broadcasts a small typed message (`chat_message`, `chat_blocked`,
+`tag_blocked`, `traffic_light_update`, `blanks_update`, `order_update`,
+`spider_update`, `qna_update`, `groups_update`, `timer_update`,
+`whiteboard_undo`, `whiteboard_replace`, `pin_update`, etc.) to every
+connected client; each client-side module listens for the message types
+it cares about and re-renders. `app.js` additionally watches
+`poll_update`/`blanks_update`/`order_update`/`spider_update`/
+`groups_update` to decide when a gated tab should appear (see **Tab
+visibility**) — no separate message type needed for that, since whether
+something is "loaded" is already part of each one's own payload.
 
-**Admin actions** go over plain REST (`/api/admin/...`) rather than the
-WebSocket, matching how a teacher actually uses them — one-off clicks from
-a form, not a stream of events. Each admin endpoint mutates the live
-session and then broadcasts the resulting state over the WebSocket, so
-REST and WebSocket clients stay in sync automatically. There's no
-authentication beyond "you're on the classroom's local network" — this is
-built for a closed portable-router network, not the open internet.
+**Instructor actions** go over plain REST (`/api/admin/...`) rather than
+the WebSocket, matching how `control.py` actually uses them — one-off
+calls triggered by a CLI command, not a stream of events. Each admin
+endpoint mutates the live session and then broadcasts the resulting state
+over the WebSocket, so the CLI and every connected browser stay in sync
+automatically — run `python control.py pin poll` and every open tab
+jumps there within a fraction of a second. There's no authentication
+beyond "you're on the classroom's local network" — this is built for a
+closed portable-router network, not the open internet.
 
 **No accounts, no browser storage.** Everyone picks a display name on
 entry, kept in server memory for that connection only. State lives only
@@ -361,11 +520,12 @@ add a new interaction type:
 1. Add its default state to `_blank_state()`.
 2. Add mutation methods to `Session` in `session_manager.py`.
 3. Add a case to `handle_message()` in `main.py` for any live (WebSocket)
-   actions, and/or a REST endpoint for admin (one-off) actions.
+   actions, and/or a REST endpoint for one-off admin actions.
 4. Write a small JS module that subscribes to its message type via
    `WSHub.on(...)` and renders into a `<div>` in `index.html`.
-5. If it should be pin-able, add it as an `<option>` in the Admin tab's
-   pin-target `<select>`.
+5. Add the matching command(s) to `control.py` (a new subparser plus a
+   `cmd_...` function) so it's controllable from the CLI.
+6. If it should be pin-able, add its id to `PIN_TARGETS` in `control.py`.
 
 ## Accessibility & internationalization
 

@@ -3,13 +3,21 @@
 // See index.html's footer for the full attribution note.
 (function () {
   // Tabs are the full-page modalities (whiteboard, poll, etc). Drawers are
-  // the two lightweight side panels (chat, status) that stay reachable
-  // without leaving whatever tab you're on. "Pinning" is the instructor's
-  // way of sending everyone to the same place — it flips the switch on
-  // every connected client the moment it's set, but doesn't lock anyone
-  // there afterwards.
+  // the lightweight side panels (chat, status, Q&A, timer) that stay
+  // reachable without leaving whatever tab you're on. "Pinning" is how the
+  // instructor sends everyone to the same place — done from the CLI, not
+  // from a browser panel; this file just listens for the pin event and
+  // acts on it. There is deliberately no admin UI in the browser: session
+  // control (loading templates, pinning, revealing answers, etc.) lives
+  // in control.py instead — see the README.
   let pinnedTarget = null;
   let myName = null; // set once the person joins; used to silently rejoin after a WiFi drop
+
+  // Tabs whose content the instructor has to load before they're worth
+  // showing at all — hidden until then, so a room full of people don't
+  // see six empty "nothing loaded yet" placeholders on first join.
+  const GATED_TABS = ["poll", "blanks", "order", "spider", "groups"];
+  const knownLoaded = {};
 
   function isDrawerTarget(target) {
     return target === "chat" || target === "traffic" || target === "qna" || target === "timer";
@@ -77,17 +85,21 @@
     document.getElementById("drawer-backdrop").addEventListener("click", closeDrawers);
   }
 
-  function initPinAdmin() {
-    document.getElementById("btn-pin-send").addEventListener("click", async () => {
-      const target = document.getElementById("pin-target-select").value;
-      await fetch("/api/admin/pin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target }),
-      });
+  function initViewerMode() {
+    // A passive/projector view: any client can flip this on to gray out
+    // and disable every control (forms, drag handles, drawing, votes)
+    // while keeping navigation — tabs, drawers, and the settings controls
+    // in the topbar — fully usable, so you can still look around.
+    const btn = document.getElementById("viewer-mode-toggle");
+    let on = false;
+    btn.addEventListener("click", () => {
+      on = !on;
+      document.body.classList.toggle("viewer-mode", on);
+      btn.textContent = on ? `👁 ${I18N.t("viewer_mode_on")}` : `👁 ${I18N.t("viewer_mode_off")}`;
+      btn.classList.toggle("active", on);
     });
-    document.getElementById("btn-pin-clear").addEventListener("click", async () => {
-      await fetch("/api/admin/pin/clear", { method: "POST" });
+    I18N.onChange(() => {
+      btn.textContent = on ? `👁 ${I18N.t("viewer_mode_on")}` : `👁 ${I18N.t("viewer_mode_off")}`;
     });
   }
 
@@ -161,8 +173,8 @@
       pinnedTarget = (msg.state.ui && msg.state.ui.pinned_tab) || null;
       updatePinBadges();
     });
-    // A live pin event, though, means the instructor wants everyone there
-    // right now.
+    // A live pin event (sent from control.py), though, means the
+    // instructor wants everyone there right now.
     WSHub.on("pin_update", (msg) => {
       pinnedTarget = msg.target;
       updatePinBadges();
@@ -170,12 +182,54 @@
     });
   }
 
+  function setTabVisibility(view, visible, pulse) {
+    const btn = document.querySelector(`#tabs button[data-view="${view}"]`);
+    if (!btn) return;
+    btn.hidden = !visible;
+    if (pulse && visible) {
+      btn.classList.add("just-activated");
+      setTimeout(() => btn.classList.remove("just-activated"), 4000);
+    }
+    if (!visible && btn.classList.contains("active")) {
+      goToTab("whiteboard"); // the tab we were looking at just got pulled out from under us
+    }
+  }
+
+  function checkGatedTab(view, loadedNow, isLiveUpdate) {
+    const wasLoaded = knownLoaded[view];
+    knownLoaded[view] = loadedNow;
+    if (!isLiveUpdate) {
+      setTabVisibility(view, loadedNow, false); // initial/reconnect sync — no pulse, this isn't "new"
+    } else if (loadedNow !== wasLoaded) {
+      setTabVisibility(view, loadedNow, loadedNow && !wasLoaded);
+    }
+  }
+
+  function initTabGating() {
+    GATED_TABS.forEach((v) => { knownLoaded[v] = false; });
+
+    WSHub.on("session_state", (msg) => {
+      checkGatedTab("poll", !!msg.state.poll.question, false);
+      checkGatedTab("blanks", !!msg.state.fill_blanks.loaded, false);
+      checkGatedTab("order", !!msg.state.ordering.loaded, false);
+      checkGatedTab("spider", !!msg.state.spider.loaded, false);
+      checkGatedTab("groups", msg.state.groups.groups.length > 0, false);
+    });
+
+    WSHub.on("poll_update", (msg) => checkGatedTab("poll", !!msg.poll.question, true));
+    WSHub.on("blanks_update", (msg) => checkGatedTab("blanks", !!msg.fill_blanks.loaded, true));
+    WSHub.on("order_update", (msg) => checkGatedTab("order", !!msg.ordering.loaded, true));
+    WSHub.on("spider_update", (msg) => checkGatedTab("spider", !!msg.spider.loaded, true));
+    WSHub.on("groups_update", (msg) => checkGatedTab("groups", msg.groups.groups.length > 0, true));
+  }
+
   async function boot() {
     await I18N.setLang("en");
     initTabs();
     initDrawers();
-    initPinAdmin();
+    initViewerMode();
     initPinSync();
+    initTabGating();
     initSettings();
     initConnectionBadge();
     initJoin();
@@ -191,7 +245,6 @@
     QnaModule.init();
     GroupsModule.init();
     TimerModule.init();
-    AdminModule.init();
 
     WSHub.connect();
   }

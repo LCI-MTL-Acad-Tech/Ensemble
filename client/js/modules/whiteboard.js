@@ -3,6 +3,10 @@
 // See index.html's footer for the full attribution note.
 // Coordinates are normalised to [0,1] of the board's current size so that
 // drawings line up whether they came from a phone or the projector laptop.
+//
+// Clients can only undo their own last action or erase all of their own
+// work — clearing the *whole* board for everyone is instructor-only, via
+// `python control.py whiteboard clear`, not a button here.
 const WhiteboardModule = (() => {
   // Not crypto.randomUUID(): that API is gated to secure contexts (https
   // or localhost) in Chrome/Safari/Edge, and this app is deliberately
@@ -66,7 +70,7 @@ const WhiteboardModule = (() => {
 
     document.querySelectorAll(".postit").forEach((el) => el.remove());
     postitEls.clear();
-    (wb.postits || []).forEach(renderPostit);
+    (wb.postits || []).forEach((p) => renderPostit(p));
   }
 
   function flushPending() {
@@ -76,13 +80,21 @@ const WhiteboardModule = (() => {
     }
   }
 
+  function activeTool() {
+    return document.getElementById("wb-tool-postit").classList.contains("primary") ? "postit" : "pen";
+  }
+
   function pointerDown(e) {
-    const tool = document.getElementById("wb-tool-postit").classList.contains("primary") ? "postit" : "pen";
     const [x, y] = toNorm(e.clientX, e.clientY);
 
-    if (tool === "postit") {
+    if (activeTool() === "postit") {
       const id = genId();
-      const postit = { id, x, y, color: "#fff59d", text: "" };
+      const postit = {
+        id, x, y, text: "",
+        color: document.getElementById("wb-postit-bg").value,
+        text_color: document.getElementById("wb-postit-text").value,
+        font_size: parseInt(document.getElementById("wb-postit-fontsize").value, 10),
+      };
       WSHub.send({ type: "whiteboard_postit", ...postit });
       renderPostit(postit, true);
       return;
@@ -141,7 +153,11 @@ const WhiteboardModule = (() => {
           const rect = wrap.getBoundingClientRect();
           const x = parseFloat(el.style.left) / rect.width;
           const y = parseFloat(el.style.top) / rect.height;
-          WSHub.send({ type: "whiteboard_postit", id: postit.id, x, y, color: el.style.background, text: textarea.value });
+          WSHub.send({
+            type: "whiteboard_postit", id: postit.id, x, y,
+            color: el.dataset.bg, text_color: el.dataset.textColor,
+            font_size: parseInt(el.dataset.fontSize, 10), text: textarea.value,
+          });
         }, 300);
       });
 
@@ -158,7 +174,12 @@ const WhiteboardModule = (() => {
     el.style.left = `${postit.x * rect.width}px`;
     el.style.top = `${postit.y * rect.height}px`;
     el.style.background = postit.color;
+    el.dataset.bg = postit.color;
+    el.dataset.textColor = postit.text_color;
+    el.dataset.fontSize = postit.font_size;
     const ta = el.querySelector("textarea");
+    ta.style.color = postit.text_color;
+    ta.style.fontSize = `${postit.font_size}px`;
     if (document.activeElement !== ta) ta.value = postit.text;
     if (editingNow) ta.focus();
   }
@@ -184,7 +205,43 @@ const WhiteboardModule = (() => {
       const x = parseFloat(el.style.left) / rect.width;
       const y = parseFloat(el.style.top) / rect.height;
       const ta = el.querySelector("textarea");
-      WSHub.send({ type: "whiteboard_postit", id: [...postitEls.entries()].find(([, v]) => v === el)[0], x, y, color: el.style.background, text: ta.value });
+      const id = [...postitEls.entries()].find(([, v]) => v === el)[0];
+      WSHub.send({
+        type: "whiteboard_postit", id, x, y,
+        color: el.dataset.bg, text_color: el.dataset.textColor,
+        font_size: parseInt(el.dataset.fontSize, 10), text: ta.value,
+      });
+    });
+  }
+
+  function removeStrokeLocally(strokeId) {
+    strokes.delete(strokeId);
+    redrawAll();
+  }
+
+  function removePostitLocally(postitId) {
+    const el = postitEls.get(postitId);
+    if (el) el.remove();
+    postitEls.delete(postitId);
+  }
+
+  function initToolSwitching() {
+    const penBtn = document.getElementById("wb-tool-pen");
+    const postitBtn = document.getElementById("wb-tool-postit");
+    const penOptions = document.getElementById("wb-pen-options");
+    const postitOptions = document.getElementById("wb-postit-options");
+
+    penBtn.addEventListener("click", () => {
+      penBtn.classList.add("primary");
+      postitBtn.classList.remove("primary");
+      penOptions.hidden = false;
+      postitOptions.hidden = true;
+    });
+    postitBtn.addEventListener("click", () => {
+      postitBtn.classList.add("primary");
+      penBtn.classList.remove("primary");
+      postitOptions.hidden = false;
+      penOptions.hidden = true;
     });
   }
 
@@ -201,18 +258,14 @@ const WhiteboardModule = (() => {
     canvas.addEventListener("pointerup", pointerUp);
     canvas.addEventListener("pointercancel", pointerUp);
 
-    document.getElementById("wb-tool-pen").addEventListener("click", () => {
-      document.getElementById("wb-tool-pen").classList.add("primary");
-      document.getElementById("wb-tool-postit").classList.remove("primary");
-    });
-    document.getElementById("wb-tool-postit").addEventListener("click", () => {
-      document.getElementById("wb-tool-postit").classList.add("primary");
-      document.getElementById("wb-tool-pen").classList.remove("primary");
-    });
+    initToolSwitching();
 
-    document.getElementById("wb-clear").addEventListener("click", () => {
-      if (confirm(I18N.t("whiteboard_clear_confirm"))) {
-        fetch("/api/admin/whiteboard/clear", { method: "POST" });
+    document.getElementById("wb-undo").addEventListener("click", () => {
+      WSHub.send({ type: "whiteboard_undo" });
+    });
+    document.getElementById("wb-erase-mine").addEventListener("click", () => {
+      if (confirm(I18N.t("whiteboard_erase_mine_confirm"))) {
+        WSHub.send({ type: "whiteboard_erase_mine" });
       }
     });
 
@@ -233,11 +286,20 @@ const WhiteboardModule = (() => {
       });
     });
     WSHub.on("whiteboard_postit", (msg) => renderPostit(msg.postit));
-    WSHub.on("whiteboard_postit_delete", (msg) => {
-      const el = postitEls.get(msg.id);
-      if (el) el.remove();
-      postitEls.delete(msg.id);
+    WSHub.on("whiteboard_postit_delete", (msg) => removePostitLocally(msg.id));
+
+    // My own undo, reflected back to me (and everyone) as a targeted removal.
+    WSHub.on("whiteboard_undo", (msg) => {
+      if (msg.kind === "stroke") removeStrokeLocally(msg.id);
+      else removePostitLocally(msg.id);
     });
+
+    // "Erase my work" replaces the board wholesale for everyone watching —
+    // simplest way to guarantee the remover's own view and everyone
+    // else's agree, without diffing which specific items disappeared.
+    WSHub.on("whiteboard_replace", (msg) => loadState(msg.whiteboard));
+
+    // Instructor-only "clear for everyone", triggered from control.py.
     WSHub.on("whiteboard_clear", () => {
       strokes.clear();
       redrawAll();

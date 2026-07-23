@@ -231,24 +231,43 @@ main#views {
 .chat-reply-form button { font-size: 0.8rem; padding: 0.3rem 0.6rem; }
 #chat-form { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 #chat-form input { flex: 1; }
+.chat-blocked-notice {
+  color: var(--red);
+  font-size: 0.8rem;
+  margin: 0.35rem 0 0;
+}
 
 /* ---------- Traffic light ---------- */
-.traffic-picker { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.traffic-btn {
-  width: 84px; height: 84px; border-radius: 50%;
-  border: 3px solid var(--line);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  font-size: 0.75rem; font-weight: 700; gap: 0.25rem;
-  background: var(--paper-raised);
+/* One vertical stack of lamp buttons — click to set your own status,
+   the number shows the live class count, and a ▸ marks your own pick.
+   No separate picker row and overview row needed. */
+#traffic-lamps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }
-.traffic-btn .swatch { width: 28px; height: 28px; border-radius: 50%; }
-.traffic-btn[data-color="green"] .swatch { background: var(--green); }
-.traffic-btn[data-color="yellow"] .swatch { background: var(--yellow); }
-.traffic-btn[data-color="red"] .swatch { background: var(--red); }
-.traffic-btn[data-color="gray"] .swatch { background: var(--gray); }
-.traffic-btn.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.lamp-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--line);
+  background: var(--paper-raised);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.lamp-btn .emote { font-size: 1.4rem; }
+.lamp-btn .lamp-count { flex: 1; text-align: left; color: var(--ink-soft); font-weight: 600; }
+.lamp-btn .selected-mark { opacity: 0; color: var(--accent); font-size: 1.2rem; }
+.lamp-btn.selected { border-color: var(--accent); background: var(--accent-soft); }
+.lamp-btn.selected .selected-mark { opacity: 1; }
+.lamp-btn[data-color="green"] { border-left: 6px solid var(--green); }
+.lamp-btn[data-color="yellow"] { border-left: 6px solid var(--yellow); }
+.lamp-btn[data-color="red"] { border-left: 6px solid var(--red); }
+.lamp-btn[data-color="gray"] { border-left: 6px solid var(--gray); }
 
-.traffic-overview-title { font-weight: 700; margin: 0 0 0.75rem; }
 #traffic-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .traffic-chip {
   display: flex; align-items: center; gap: 0.4rem;
@@ -264,37 +283,29 @@ main#views {
 .traffic-chip[data-color="red"] .light { background: var(--red); }
 .traffic-chip[data-color="gray"] .light { background: var(--gray); }
 
-/* signature element: a compact housing that mirrors a real traffic-signal, summarizing the whole class at a glance */
-#traffic-summary-housing {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  background: var(--ink);
-  padding: 0.75rem;
-  border-radius: 14px;
-  margin-bottom: 1rem;
-}
-[data-theme="dark"] #traffic-summary-housing { background: #05070a; }
-.summary-lamp { width: 46px; height: 46px; border-radius: 50%; background: #000a; display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 0.95rem; }
-.summary-lamp[data-color="green"] { background: var(--green); }
-.summary-lamp[data-color="yellow"] { background: var(--yellow); }
-.summary-lamp[data-color="red"] { background: var(--red); }
-.summary-lamp[data-color="gray"] { background: var(--gray); }
-
 /* ---------- Tag cloud ---------- */
 #tag-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
 #tag-form input { flex: 1; }
 #tag-cloud-display {
-  display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline;
-  flex: 1; align-content: flex-start;
+  position: relative;
+  flex: 1;
+  min-height: 320px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  overflow: hidden;
 }
 .tag-word {
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent);
+  position: absolute;
+  white-space: nowrap;
   font-weight: 700;
+  color: var(--accent);
+  line-height: 1.1;
+  cursor: default;
 }
+.tag-word:nth-child(3n+1) { color: var(--accent); }
+.tag-word:nth-child(3n+2) { color: var(--green); }
+.tag-word:nth-child(3n) { color: var(--red); }
 
 /* ---------- Poll ---------- */
 .poll-question { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
@@ -305,6 +316,10 @@ main#views {
 
 /* ---------- Whiteboard ---------- */
 #whiteboard-toolbar { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.wb-tool-select { display: flex; gap: 0.4rem; }
+.wb-tool-options { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.wb-inline-label { font-size: 0.8rem; color: var(--ink-soft); }
+.wb-actions { display: flex; gap: 0.5rem; margin-left: auto; }
 #whiteboard-wrap { position: relative; flex: 1; min-height: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #fff; }
 [data-theme="dark"] #whiteboard-wrap { background: #20242b; }
 #whiteboard-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -475,6 +490,16 @@ h2 { margin: 0 0 1rem; }
 .pin-badge { margin-left: 0.3rem; font-size: 0.8rem; }
 nav#tabs button.active { position: relative; }
 
+@keyframes tab-just-activated-pulse {
+  0%, 100% { background: transparent; }
+  50% { background: var(--accent-soft); }
+}
+nav#tabs button.just-activated {
+  animation: tab-just-activated-pulse 0.9s ease-in-out 3;
+  color: var(--accent);
+  font-weight: 800;
+}
+
 /* ---------- Drawer toggles + drawers ---------- */
 .drawer-toggle {
   position: relative;
@@ -536,6 +561,32 @@ nav#tabs button.active { position: relative; }
 }
 
 /* ---------- Attribution footer ---------- */
+#viewer-mode-toggle { font-size: 0.85rem; }
+#viewer-mode-toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* Viewer mode: gray out and disable every control inside the content
+   areas (tabs' content + drawer bodies) so a passive/projector view can't
+   accidentally change anything, while navigation (tabs, drawer toggles,
+   theme/font/language, the toggle itself) stays fully usable. */
+body.viewer-mode #views button,
+body.viewer-mode #views input,
+body.viewer-mode #views textarea,
+body.viewer-mode #views select,
+body.viewer-mode .drawer-body button,
+body.viewer-mode .drawer-body input,
+body.viewer-mode .drawer-body textarea,
+body.viewer-mode .drawer-body select {
+  pointer-events: none;
+  opacity: 0.5;
+}
+body.viewer-mode #whiteboard-canvas,
+body.viewer-mode .postit,
+body.viewer-mode .piece,
+body.viewer-mode .order-handle {
+  pointer-events: none;
+}
+body.viewer-mode .postit { opacity: 0.85; }
+
 footer.appfoot {
   text-align: center;
   color: var(--ink-soft);
@@ -572,16 +623,12 @@ footer.appfoot {
 }
 .qna-row.answered { opacity: 0.55; }
 .qna-row.answered .qna-text { text-decoration: line-through; }
-.qna-upvote {
-  border: 1px solid var(--line);
-  background: transparent;
-  border-radius: 999px;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.85rem;
+.qna-text { flex: 1; }
+.qna-approved-badge {
+  font-size: 0.9rem;
+  color: var(--yellow);
   flex-shrink: 0;
 }
-.qna-upvote.chosen { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
-.qna-text { flex: 1; }
 .qna-answered-badge {
   font-size: 0.7rem;
   color: var(--green);
@@ -590,6 +637,15 @@ footer.appfoot {
   padding: 0.1rem 0.5rem;
   flex-shrink: 0;
 }
+.qna-reactions { display: flex; gap: 0.3rem; flex-shrink: 0; }
+.qna-react-btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+}
+.qna-react-btn.chosen { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- Random groups ---------- */
 .groups-grid {
@@ -614,6 +670,5 @@ footer.appfoot {
 .timer-display.done { color: var(--red); }
 
 @media (max-width: 600px) {
-  .traffic-btn { width: 68px; height: 68px; }
   .chat-msg { max-width: 90%; }
 }

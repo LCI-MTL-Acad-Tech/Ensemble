@@ -1,9 +1,12 @@
 // Classroom Live — built through an iterative collaboration between Elisa Schaeffer
 // (Dean of Technology and Design, Collège LaSalle Montréal) and Claude (Anthropic).
 // See index.html's footer for the full attribution note.
-// Anonymous Q&A: nobody's name is ever attached to a question or an
-// upvote — the server doesn't even store it. Sorted unanswered-first,
-// then by upvote count, then by submission time.
+// Anonymous Q&A: nobody's name is ever attached to a question or a
+// reaction — the server doesn't even store it. Sorted unanswered-first,
+// then by (thumbs up - thumbs down), then by submission time. "Approved"
+// is the instructor's own curation signal (set via control.py), separate
+// from "answered" — a question can be approved as worth everyone's
+// attention whether or not it's been dealt with yet.
 const QnaModule = (() => {
   let lastState = null;
 
@@ -13,12 +16,15 @@ const QnaModule = (() => {
     return d.innerHTML;
   }
 
+  function score(q) {
+    const vals = Object.values(q.reactions);
+    return vals.filter((r) => r === "up").length - vals.filter((r) => r === "down").length;
+  }
+
   function sortedQuestions(qna) {
     return Object.values(qna.questions).sort((a, b) => {
       if (a.answered !== b.answered) return a.answered ? 1 : -1;
-      const av = Object.keys(a.upvotes).length, bv = Object.keys(b.upvotes).length;
-      if (av !== bv) return bv - av;
-      return a.ts - b.ts;
+      return score(b) - score(a) || a.ts - b.ts;
     });
   }
 
@@ -51,16 +57,24 @@ const QnaModule = (() => {
     } else {
       const myId = WSHub.getClientId();
       questions.forEach((q) => {
+        const up = Object.values(q.reactions).filter((r) => r === "up").length;
+        const down = Object.values(q.reactions).filter((r) => r === "down").length;
+        const mine = q.reactions[myId];
         const row = document.createElement("div");
         row.className = "qna-row" + (q.answered ? " answered" : "");
-        const mine = !!q.upvotes[myId];
         row.innerHTML = `
-          <button class="qna-upvote ${mine ? "chosen" : ""}">▲ <span>${Object.keys(q.upvotes).length}</span></button>
           <span class="qna-text">${escapeHtml(q.text)}</span>
+          ${q.approved ? `<span class="qna-approved-badge" title="${I18N.t("qna_approved_title")}">★</span>` : ""}
           ${q.answered ? `<span class="qna-answered-badge">${I18N.t("qna_answered_label")}</span>` : ""}
+          <span class="qna-reactions">
+            <button class="qna-react-btn ${mine === "up" ? "chosen" : ""}" data-reaction="up">👍 <span>${up}</span></button>
+            <button class="qna-react-btn ${mine === "down" ? "chosen" : ""}" data-reaction="down">👎 <span>${down}</span></button>
+          </span>
         `;
-        row.querySelector(".qna-upvote").addEventListener("click", () => {
-          WSHub.send({ type: "qna_upvote", question_id: q.id });
+        row.querySelectorAll(".qna-react-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            WSHub.send({ type: "qna_react", question_id: q.id, reaction: btn.dataset.reaction });
+          });
         });
         list.appendChild(row);
       });

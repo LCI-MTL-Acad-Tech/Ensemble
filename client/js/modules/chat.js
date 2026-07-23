@@ -109,6 +109,17 @@ const ChatModule = (() => {
     listEl.scrollTop = listEl.scrollHeight;
   }
 
+  function showBlockedNotice() {
+    const existing = document.getElementById("chat-blocked-notice");
+    if (existing) existing.remove();
+    const notice = document.createElement("p");
+    notice.id = "chat-blocked-notice";
+    notice.className = "chat-blocked-notice";
+    notice.textContent = I18N.t("chat_blocked_notice");
+    formEl.insertAdjacentElement("afterend", notice);
+    setTimeout(() => notice.remove(), 4000);
+  }
+
   function init() {
     listEl = document.getElementById("chat-messages");
     formEl = document.getElementById("chat-form");
@@ -130,6 +141,7 @@ const ChatModule = (() => {
       allMessages.push(msg.message);
       render();
     });
+    WSHub.on("chat_blocked", showBlockedNotice);
     I18N.onChange(render);
   }
 

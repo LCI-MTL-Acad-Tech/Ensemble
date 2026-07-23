@@ -43,8 +43,9 @@ def _blank_state() -> dict[str, Any]:
             "active": False,
         },
         "whiteboard": {
-            "strokes": [],  # {id, color, size, points: [[x,y],...]}
-            "postits": [],  # {id, x, y, color, text}
+            "strokes": [],  # {id, color, size, points: [[x,y],...], owner: client_id}
+            "postits": [],  # {id, x, y, color, text_color, font_size, text, owner: client_id}
+            "history": {},  # client_id -> [{"type": "stroke"|"postit", "id": ...}, ...] — undo stack
         },
         "fill_blanks": {
             "title": "",
@@ -79,7 +80,7 @@ def _blank_state() -> dict[str, Any]:
             "pinned_tab": None,  # the tab/drawer id the instructor last pinned, or None
         },
         "qna": {
-            "questions": {}  # question_id -> {id, text, upvotes: {client_id: True}, answered, ts}
+            "questions": {}  # question_id -> {id, text, reactions: {client_id: "up"|"down"}, answered, approved, ts}
             # deliberately no submitter name anywhere in here — anonymous by design
         },
         "groups": {
@@ -173,21 +174,59 @@ class Session:
                 return
 
     def clear_whiteboard(self) -> None:
+        # instructor-only ("clear for everyone") — clients get undo / erase-my-work instead
         self.state["whiteboard"]["strokes"] = []
         self.state["whiteboard"]["postits"] = []
+        self.state["whiteboard"]["history"] = {}
 
-    def upsert_postit(self, postit: dict) -> None:
+    def upsert_postit(self, postit: dict, owner: str | None = None) -> bool:
+        """Create or update a postit. Returns True if this was a brand-new
+        note (so the caller can record undo history) — an edit/move of an
+        existing note keeps its *original* owner and isn't undo-able by
+        whoever nudged it, only by whoever created it."""
         postits = self.state["whiteboard"]["postits"]
         for i, p in enumerate(postits):
             if p["id"] == postit["id"]:
+                postit["owner"] = p.get("owner")
                 postits[i] = postit
-                return
+                return False
+        postit["owner"] = owner
         postits.append(postit)
+        return True
 
     def remove_postit(self, postit_id: str) -> None:
         self.state["whiteboard"]["postits"] = [
             p for p in self.state["whiteboard"]["postits"] if p["id"] != postit_id
         ]
+
+    def push_whiteboard_history(self, client_id: str, kind: str, item_id: str) -> None:
+        history = self.state["whiteboard"]["history"].setdefault(client_id, [])
+        history.append({"type": kind, "id": item_id})
+        if len(history) > 50:  # bound memory for a very prolific drawer
+            history.pop(0)
+
+    def undo_whiteboard_action(self, client_id: str) -> dict | None:
+        """Pop and revert this client's own most recent stroke or postit
+        creation. Only reverses what *they* added — never touches other
+        people's work, since only their own actions are on their stack."""
+        history = self.state["whiteboard"]["history"].get(client_id)
+        if not history:
+            return None
+        entry = history.pop()
+        wb = self.state["whiteboard"]
+        if entry["type"] == "stroke":
+            wb["strokes"] = [s for s in wb["strokes"] if s["id"] != entry["id"]]
+        else:
+            wb["postits"] = [p for p in wb["postits"] if p["id"] != entry["id"]]
+        return entry
+
+    def erase_client_whiteboard_work(self, client_id: str) -> None:
+        """Remove every stroke and postit this client originally created —
+        not the whole board, just their own contributions."""
+        wb = self.state["whiteboard"]
+        wb["strokes"] = [s for s in wb["strokes"] if s.get("owner") != client_id]
+        wb["postits"] = [p for p in wb["postits"] if p.get("owner") != client_id]
+        wb["history"].pop(client_id, None)
 
     # ---- fill-in-the-blanks ----
 
@@ -421,18 +460,22 @@ class Session:
         if not text:
             return {}
         qid = str(uuid.uuid4())
-        q = {"id": qid, "text": text, "upvotes": {}, "answered": False, "ts": time.time()}
+        q = {
+            "id": qid, "text": text, "reactions": {},  # client_id -> "up"|"down"
+            "answered": False, "approved": False, "ts": time.time(),
+        }
         self.state["qna"]["questions"][qid] = q
         return q
 
-    def toggle_qna_upvote(self, question_id: str, client_id: str) -> bool:
+    def react_to_qna_question(self, question_id: str, client_id: str, reaction: str) -> bool:
         q = self.state["qna"]["questions"].get(question_id)
-        if not q:
+        if not q or reaction not in ("up", "down"):
             return False
-        if client_id in q["upvotes"]:
-            del q["upvotes"][client_id]
+        # clicking the same reaction again toggles it off, like the other reaction widgets
+        if q["reactions"].get(client_id) == reaction:
+            del q["reactions"][client_id]
         else:
-            q["upvotes"][client_id] = True
+            q["reactions"][client_id] = reaction
         return True
 
     def set_qna_answered(self, question_id: str, answered: bool) -> bool:
@@ -440,6 +483,16 @@ class Session:
         if not q:
             return False
         q["answered"] = answered
+        return True
+
+    def set_qna_approved(self, question_id: str, approved: bool) -> bool:
+        """Instructor's curation signal — orthogonal to 'answered': marks
+        a question as one worth everyone's attention, independent of
+        whether it's been dealt with yet."""
+        q = self.state["qna"]["questions"].get(question_id)
+        if not q:
+            return False
+        q["approved"] = approved
         return True
 
     def delete_qna_question(self, question_id: str) -> bool:
