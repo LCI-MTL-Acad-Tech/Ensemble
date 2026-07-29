@@ -86,7 +86,10 @@ const BlanksModule = (() => {
       if (blankEl) blankId = blankEl.dataset.blankId;
       else if (!poolEl) blankId = undefined; // dropped outside anything — ignore
       if (blankId !== undefined) {
-        WSHub.send({ type: "blanks_move_piece", piece_id: draggingPieceId, blank_id: blankId });
+        WSHub.send({
+          type: "blanks_move_piece", piece_id: draggingPieceId, blank_id: blankId,
+          rev: lastState ? lastState.rev : undefined,
+        });
       }
       draggingPieceId = null;
     }
@@ -189,9 +192,30 @@ const BlanksModule = (() => {
     body.appendChild(renderVotes(fb));
   }
 
+  function showActionNotice(kind, text) {
+    const existing = document.getElementById("blanks-action-notice");
+    if (existing) existing.remove();
+    const notice = document.createElement("p");
+    notice.id = "blanks-action-notice";
+    notice.className = kind === "denied" ? "chat-blocked-notice" : "action-applied-notice";
+    notice.textContent = text;
+    const body = document.getElementById("blanks-body");
+    body.insertBefore(notice, body.firstChild);
+    setTimeout(() => notice.remove(), kind === "denied" ? 4500 : 1800);
+  }
+
   function init() {
     WSHub.on("session_state", (msg) => render(msg.state.fill_blanks));
     WSHub.on("blanks_update", (msg) => render(msg.fill_blanks));
+    WSHub.on("action_applied", (msg) => {
+      if (msg.activity !== "blanks") return;
+      showActionNotice("applied", I18N.t("action_applied_notice"));
+    });
+    WSHub.on("action_denied", (msg) => {
+      if (msg.activity !== "blanks") return;
+      const key = msg.reason === "stale" ? "action_denied_stale" : "action_denied_generic";
+      showActionNotice("denied", I18N.t(key));
+    });
     I18N.onChange(() => render(lastState));
   }
 

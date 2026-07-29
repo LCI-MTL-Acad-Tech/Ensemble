@@ -236,6 +236,17 @@ main#views {
   font-size: 0.8rem;
   margin: 0.35rem 0 0;
 }
+.action-applied-notice {
+  color: var(--green);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--green);
+  border-radius: var(--radius);
+  display: inline-block;
+}
 
 /* ---------- Traffic light ---------- */
 /* One vertical stack of lamp buttons — click to set your own status,

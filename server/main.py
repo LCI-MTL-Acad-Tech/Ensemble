@@ -18,7 +18,9 @@ URL from their own devices.
 from __future__ import annotations
 
 import json
+import time
 import uuid
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -32,12 +34,42 @@ from . import session_manager as sm
 
 BASE_DIR = Path(__file__).parent.parent
 CLIENT_DIR = BASE_DIR / "client"
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+ACTION_LOG_FILE = LOGS_DIR / "action_log.jsonl"
 
 app = FastAPI(title="Classroom Interaction Tool")
 
 # The single live session, created blank on server start.
 live = sm.Session(name="Untitled session")
 moderation_list = mod.ModerationList()
+
+# A record of every move request on the "collaborative position" actions
+# (fill-in-the-blanks piece moves, ordering item moves) — both the ones
+# that were applied and the ones denied for being based on a state that
+# had already moved on. Bounded in memory for quick inspection via
+# control.py; also appended to a JSONL file for anything longer-lived
+# than the server process.
+action_log: deque[dict] = deque(maxlen=1000)
+
+
+def log_action(activity: str, action: str, client_id: str, name: str, detail: dict, outcome: str, rev: int) -> None:
+    entry = {
+        "ts": time.time(),
+        "activity": activity,
+        "action": action,
+        "client_id": client_id,
+        "name": name,
+        "detail": detail,
+        "outcome": outcome,  # "applied" | "denied_stale" | "denied_not_found" | "denied_no_change"
+        "rev": rev,
+    }
+    action_log.append(entry)
+    try:
+        with open(ACTION_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError:
+        pass  # logging to disk is a nice-to-have, never worth crashing a live class over
 
 
 class ConnectionManager:
@@ -221,8 +253,25 @@ async def handle_message(client_id: str, msg: dict) -> None:
         piece_id = str(msg.get("piece_id", ""))
         blank_id = msg.get("blank_id")
         blank_id = str(blank_id) if blank_id is not None else None
-        if live.move_blank_piece(piece_id, blank_id, name):
+        client_rev = msg.get("rev")
+        result = live.move_blank_piece(piece_id, blank_id, name, client_rev)
+        log_action(
+            "blanks", "move_piece", client_id, name,
+            {"piece_id": piece_id, "blank_id": blank_id, "client_rev": client_rev},
+            "applied" if result["ok"] else f"denied_{result['reason']}",
+            result["rev"],
+        )
+        if result["ok"]:
             await manager.broadcast({"type": "blanks_update", "fill_blanks": live.state["fill_blanks"]})
+            await manager.send_to(client_id, {
+                "type": "action_applied", "activity": "blanks", "action": "move_piece",
+                "piece_id": piece_id, "blank_id": blank_id,
+            })
+        else:
+            await manager.send_to(client_id, {
+                "type": "action_denied", "activity": "blanks", "action": "move_piece",
+                "piece_id": piece_id, "reason": result["reason"], "current_rev": result["rev"],
+            })
 
     elif mtype == "blanks_react":
         name = manager.names.get(client_id, "Anonymous")
@@ -248,10 +297,30 @@ async def handle_message(client_id: str, msg: dict) -> None:
             await manager.broadcast({"type": "spider_update", "spider": live.state["spider"]})
 
     elif mtype == "order_move_item":
+        name = manager.names.get(client_id, "Anonymous")
         item_id = str(msg.get("item_id", ""))
         new_index = msg.get("new_index")
-        if isinstance(new_index, int) and live.move_ordering_item(item_id, new_index):
+        client_rev = msg.get("rev")
+        if not isinstance(new_index, int):
+            return
+        result = live.move_ordering_item(item_id, new_index, client_rev)
+        log_action(
+            "order", "move_item", client_id, name,
+            {"item_id": item_id, "new_index": new_index, "client_rev": client_rev},
+            "applied" if result["ok"] else f"denied_{result['reason']}",
+            result["rev"],
+        )
+        if result["ok"]:
             await manager.broadcast({"type": "order_update", "ordering": live.state["ordering"]})
+            await manager.send_to(client_id, {
+                "type": "action_applied", "activity": "order", "action": "move_item",
+                "item_id": item_id, "new_index": new_index,
+            })
+        elif result["reason"] != "no_change":  # dropping back in the same spot isn't worth a denial notice
+            await manager.send_to(client_id, {
+                "type": "action_denied", "activity": "order", "action": "move_item",
+                "item_id": item_id, "reason": result["reason"], "current_rev": result["rev"],
+            })
 
     elif mtype == "order_react":
         name = manager.names.get(client_id, "Anonymous")
@@ -358,6 +427,16 @@ class TimerSetRequest(BaseModel):
 @app.get("/api/session")
 async def get_session():
     return full_state_message()
+
+
+@app.get("/api/admin/action_log")
+async def api_action_log(limit: int = 50, activity: str | None = None):
+    entries = list(action_log)
+    if activity:
+        entries = [e for e in entries if e["activity"] == activity]
+    entries = entries[-limit:]
+    entries.reverse()  # most recent first
+    return {"entries": entries}
 
 
 @app.get("/api/admin/sessions")

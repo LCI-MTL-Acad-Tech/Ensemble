@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -260,6 +261,22 @@ def cmd_whiteboard(url, args):
         print("Whiteboard cleared for everyone. (Clients can only undo/erase their own work — this is the only way to wipe the whole board.)")
 
 
+def cmd_log(url, args):
+    import urllib.parse
+    qs = {"limit": args.n}
+    if args.activity:
+        qs["activity"] = args.activity
+    entries = call(url, "GET", f"/api/admin/action_log?{urllib.parse.urlencode(qs)}")["entries"]
+    if not entries:
+        print("(no logged actions yet)")
+        return
+    for e in entries:
+        when = time.strftime("%H:%M:%S", time.localtime(e["ts"]))
+        outcome = e["outcome"]
+        marker = "✓" if outcome == "applied" else "✗"
+        print(f"{marker} {when}  [{e['activity']}/{e['action']}]  {e['name']:<16} rev={e['rev']:<4} {outcome:<18} {e['detail']}")
+
+
 def cmd_tags(url, args):
     call(url, "POST", "/api/admin/tags/clear")
     print("Tag cloud cleared.")
@@ -372,6 +389,10 @@ def build_parser() -> argparse.ArgumentParser:
     whiteboard_sub = whiteboard.add_subparsers(dest="action", required=True)
     whiteboard_sub.add_parser("clear")
 
+    log = sub.add_parser("log", help="Show recent move requests on the blanks/order exercises — applied and denied.")
+    log.add_argument("--n", type=int, default=30, help="How many entries to show (default 30)")
+    log.add_argument("--activity", choices=["blanks", "order"], default=None, help="Filter to one activity")
+
     sub.add_parser("tags", help="Clear the tag cloud.").set_defaults(action="clear")
 
     mod = sub.add_parser("moderation", help="Manage the chat word-filter denylist.")
@@ -390,7 +411,7 @@ DISPATCH = {
     "status": cmd_status, "pin": cmd_pin, "session": cmd_session, "poll": cmd_poll,
     "blanks": cmd_blanks, "order": cmd_order, "spider": cmd_spider, "qna": cmd_qna,
     "groups": cmd_groups, "timer": cmd_timer, "tags": cmd_tags, "moderation": cmd_moderation,
-    "whiteboard": cmd_whiteboard,
+    "whiteboard": cmd_whiteboard, "log": cmd_log,
 }
 
 
@@ -422,6 +443,7 @@ Classroom Live — control menu
  11) Clear tag cloud
  12) Chat moderation: list / add / remove / load / save / reset
  13) Whiteboard: clear (for everyone)
+ 14) Log: recent move requests (applied/denied) on blanks + order
   q) Quit
 
 Enter a number, or type a full command line (e.g. "pin poll"): """
@@ -432,7 +454,7 @@ def interactive(url: str) -> None:
     shortcuts = {
         "1": "status", "2": "pin ", "3": "session ", "4": "poll ", "5": "blanks ",
         "6": "order ", "7": "spider ", "8": "qna ", "9": "groups ", "10": "timer ",
-        "11": "tags", "12": "moderation ", "13": "whiteboard ",
+        "11": "tags", "12": "moderation ", "13": "whiteboard ", "14": "log",
     }
     while True:
         try:

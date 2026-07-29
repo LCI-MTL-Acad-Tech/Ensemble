@@ -69,6 +69,9 @@
   "viewer_mode_on": "Presenter mode (on)",
   "chat_blocked_notice": "Message not sent — it contains a word that isn't allowed here.",
   "tag_blocked_notice": "Not added — that word isn't allowed here.",
+  "action_applied_notice": "✓ Your change was applied.",
+  "action_denied_stale": "Someone else changed this just before your move went through — take a look and try again.",
+  "action_denied_generic": "That move couldn't be applied — take a look and try again.",
 
   "nav_blanks": "Fill blanks",
   "nav_spider": "Self-assessment",

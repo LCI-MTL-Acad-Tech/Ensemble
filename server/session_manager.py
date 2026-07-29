@@ -56,6 +56,7 @@ def _blank_state() -> dict[str, Any]:
             "placements": {},  # piece_id -> {"blank_id": str|None, "moved_by": name}
             "reactions": {},  # piece_id -> {client_id: {"name": name, "type": "endorse"|"object"}}
             "votes": {},  # client_id -> {"name": name, "vote": "yes"|"no"|"unsure"}
+            "rev": 0,  # bumped on every move — lets clients detect a stale request (see move_blank_piece)
             "loaded": False,
         },
         "spider": {
@@ -74,6 +75,7 @@ def _blank_state() -> dict[str, Any]:
             "last_moved_at": {},  # item_id -> epoch float, bumped whenever its position shifts
             "finished": False,  # every connected client has checkmarked every item
             "revealed": False,  # instructor has revealed the answer key
+            "rev": 0,  # bumped on every move — lets clients detect a stale request (see move_ordering_item)
             "loaded": False,
         },
         "ui": {
@@ -266,6 +268,7 @@ class Session:
             "placements": {pid: {"blank_id": None, "moved_by": None} for pid in pieces},
             "reactions": {pid: {} for pid in pieces},
             "votes": {},
+            "rev": 0,
             "loaded": True,
         }
 
@@ -276,11 +279,23 @@ class Session:
         fb["placements"] = {pid: {"blank_id": None, "moved_by": None} for pid in fb["pieces"]}
         fb["reactions"] = {pid: {} for pid in fb["pieces"]}
         fb["votes"] = {}
+        fb["rev"] = fb.get("rev", 0) + 1  # invalidates any move already in flight when reset happened
 
-    def move_blank_piece(self, piece_id: str, blank_id: str | None, mover_name: str) -> bool:
+    def move_blank_piece(self, piece_id: str, blank_id: str | None, mover_name: str, client_rev: int | None) -> dict:
+        """Move a piece, but only if the client's request was made against
+        the state as it currently stands. `client_rev` is the fill_blanks
+        revision the client had loaded when it decided to make this move;
+        if the server's revision has since moved on (someone else moved
+        something first), the request is denied rather than silently
+        applied on top of a picture the client can no longer see —
+        returns a dict describing what happened so the caller can both
+        log it and tell the requester."""
         fb = self.state["fill_blanks"]
         if piece_id not in fb.get("pieces", {}):
-            return False
+            return {"ok": False, "reason": "not_found", "rev": fb["rev"]}
+        if client_rev is not None and client_rev != fb["rev"]:
+            return {"ok": False, "reason": "stale", "rev": fb["rev"]}
+
         # a blank can only hold one piece at a time — bump anything already there back to the pool
         if blank_id is not None:
             for pid, placement in fb["placements"].items():
@@ -290,7 +305,8 @@ class Session:
                     fb["reactions"][pid] = {}
         fb["placements"][piece_id] = {"blank_id": blank_id, "moved_by": mover_name}
         fb["reactions"][piece_id] = {}  # moving clears reactions on the old placement
-        return True
+        fb["rev"] += 1
+        return {"ok": True, "reason": "applied", "rev": fb["rev"]}
 
     def react_to_blank_piece(self, piece_id: str, client_id: str, name: str, reaction: str) -> bool:
         fb = self.state["fill_blanks"]
@@ -375,6 +391,7 @@ class Session:
             "last_moved_at": {iid: now for iid in items},
             "finished": False,
             "revealed": False,
+            "rev": 0,
             "loaded": True,
         }
 
@@ -390,16 +407,27 @@ class Session:
         od["last_moved_at"] = {iid: now for iid in od["items"]}
         od["finished"] = False
         od["revealed"] = False
+        od["rev"] = od.get("rev", 0) + 1  # invalidates any move already in flight when reset happened
 
-    def move_ordering_item(self, item_id: str, new_index: int) -> bool:
+    def move_ordering_item(self, item_id: str, new_index: int, client_rev: int | None) -> dict:
+        """Move an item, but only if the client's request was made against
+        the order as it currently stands. `client_rev` is the ordering
+        revision the client had loaded when it decided to make this move;
+        if someone else moved something first, the request is denied
+        rather than silently reordering on top of an arrangement the
+        client can no longer see. Returns a dict describing the outcome
+        so the caller can both log it and tell the requester."""
         od = self.state["ordering"]
         order = od.get("current_order", [])
         if item_id not in order:
-            return False
+            return {"ok": False, "reason": "not_found", "rev": od["rev"]}
+        if client_rev is not None and client_rev != od["rev"]:
+            return {"ok": False, "reason": "stale", "rev": od["rev"]}
+
         old_index = order.index(item_id)
         new_index = max(0, min(new_index, len(order) - 1))
         if old_index == new_index:
-            return False
+            return {"ok": False, "reason": "no_change", "rev": od["rev"]}
         order.pop(old_index)
         order.insert(new_index, item_id)
         # every row whose position shifted (not just the one dragged) has its
@@ -411,7 +439,8 @@ class Session:
             od["reactions"][iid] = {}
             od["last_moved_at"][iid] = now
         od["finished"] = False
-        return True
+        od["rev"] += 1
+        return {"ok": True, "reason": "applied", "rev": od["rev"]}
 
     def react_to_ordering_item(self, item_id: str, client_id: str, name: str, reaction: str) -> bool:
         od = self.state["ordering"]

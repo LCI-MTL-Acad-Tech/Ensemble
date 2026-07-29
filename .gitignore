@@ -5,6 +5,10 @@
 #   git add -f sessions/my-template.json
 sessions/*.json
 
+# Action log — generated at runtime, recreated automatically on server
+# startup. Contains chat/exercise activity detail, not something to track.
+logs/
+
 # Python
 __pycache__/
 *.pyc

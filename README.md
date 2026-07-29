@@ -447,6 +447,44 @@ These don't need a JSON template — they're driven entirely from
   my work** (everything they've personally added), never a wipe of
   anyone else's contributions.
 
+## Feedback and stale-request protection on collaborative moves
+
+Fill-in-the-blanks and Order-the-steps are the two activities where
+*where you drop something* depends on the current arrangement — unlike,
+say, voting in a poll or picking a traffic-light color, which don't
+depend on what anyone else just did. That makes them the ones where two
+people acting at nearly the same moment could otherwise clash: if your
+client computed "move piece X into blank 3" based on a layout that's
+since changed underneath you, blindly applying that move could clobber
+someone else's action or just land somewhere that no longer makes sense.
+
+So every move request in these two activities carries the revision
+number the client had loaded at the moment it decided to make that move.
+The server only applies the move if that revision still matches its own
+— if someone else's move landed first and bumped the revision, the
+request is turned down rather than applied on top of a picture the
+client can no longer see. Either way, the person who made the request
+gets told what happened, not left to guess from whether the screen
+changed:
+
+- **Applied** → a brief green "✓ Your change was applied" notice.
+- **Denied** (stale state, or the piece/item no longer exists) → a red
+  notice explaining what happened and inviting them to look at the
+  now-current state and try again — which they can, immediately, since
+  the state update that carries the denial already reflects reality.
+
+**Every one of these requests is logged**, whether applied or denied:
+timestamp, who made it, exactly what they asked for, the revision they
+thought they were acting on, the revision the server was actually on,
+and the outcome. This is kept in memory (last 1000) for quick inspection
+and also appended to `logs/action_log.jsonl` for anything longer-lived
+than the server process. View it with:
+
+```bash
+python control.py log                    # last 30, both activities
+python control.py log --n 100 --activity order
+```
+
 ## Do we need a moderation GUI?
 
 Short answer: not a separate one. Two things cover what a dedicated
@@ -493,6 +531,7 @@ classroom-tool/
 │                              timer) — no admin module; there's no browser admin UI
 ├── sessions/                 Saved session JSON files
 ├── examples/                 Ready-to-load exercise/spider templates to try things out
+├── logs/                     action_log.jsonl — created automatically at startup
 └── requirements.txt
 ```
 
@@ -509,6 +548,9 @@ it cares about and re-renders. `app.js` additionally watches
 `groups_update` to decide when a gated tab should appear (see **Tab
 visibility**) — no separate message type needed for that, since whether
 something is "loaded" is already part of each one's own payload.
+Fill-in-the-blanks and Order-the-steps move requests additionally get a
+private (not broadcast) `action_applied` or `action_denied` reply to the
+specific sender — see **Feedback and stale-request protection** below.
 
 **Instructor actions** go over plain REST (`/api/admin/...`) rather than
 the WebSocket, matching how `control.py` actually uses them — one-off

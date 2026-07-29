@@ -69,6 +69,9 @@
   "viewer_mode_on": "Mode présentateur (actif)",
   "chat_blocked_notice": "Message non envoyé — il contient un mot qui n'est pas permis ici.",
   "tag_blocked_notice": "Non ajouté — ce mot n'est pas permis ici.",
+  "action_applied_notice": "✓ Votre changement a été appliqué.",
+  "action_denied_stale": "Quelqu'un d'autre a modifié ceci juste avant que votre action ne soit traitée — regardez et réessayez.",
+  "action_denied_generic": "Cette action n'a pas pu être appliquée — regardez et réessayez.",
 
   "nav_blanks": "Texte à trous",
   "nav_spider": "Auto-évaluation",

@@ -118,7 +118,10 @@ const OrderModule = (() => {
       row.style.zIndex = "";
       const finalIndex = [...list.children].indexOf(row);
       dragEl = null;
-      WSHub.send({ type: "order_move_item", item_id: itemId, new_index: finalIndex });
+      WSHub.send({
+        type: "order_move_item", item_id: itemId, new_index: finalIndex,
+        rev: lastState ? lastState.rev : undefined,
+      });
     }
 
     window.addEventListener("pointermove", onMove);
@@ -174,9 +177,30 @@ const OrderModule = (() => {
     body.appendChild(panel);
   }
 
+  function showActionNotice(kind, text) {
+    const existing = document.getElementById("order-action-notice");
+    if (existing) existing.remove();
+    const notice = document.createElement("p");
+    notice.id = "order-action-notice";
+    notice.className = kind === "denied" ? "chat-blocked-notice" : "action-applied-notice";
+    notice.textContent = text;
+    const body = document.getElementById("order-body");
+    body.insertBefore(notice, body.firstChild);
+    setTimeout(() => notice.remove(), kind === "denied" ? 4500 : 1800);
+  }
+
   function init() {
     WSHub.on("session_state", (msg) => render(msg.state.ordering));
     WSHub.on("order_update", (msg) => render(msg.ordering));
+    WSHub.on("action_applied", (msg) => {
+      if (msg.activity !== "order") return;
+      showActionNotice("applied", I18N.t("action_applied_notice"));
+    });
+    WSHub.on("action_denied", (msg) => {
+      if (msg.activity !== "order") return;
+      const key = msg.reason === "stale" ? "action_denied_stale" : "action_denied_generic";
+      showActionNotice("denied", I18N.t(key));
+    });
     I18N.onChange(() => render(lastState));
   }
 
