@@ -32,7 +32,7 @@
   "whiteboard_thickness": "Grosor",
   "whiteboard_postit_bg": "Fondo",
   "whiteboard_postit_text": "Texto",
-  "whiteboard_postit_fontsize": "Tamaño del texto",
+  "whiteboard_postit_fontsize": "Tamaño para notas nuevas",
   "whiteboard_undo": "Deshacer",
   "whiteboard_erase_mine": "Borrar mi trabajo",
   "whiteboard_erase_mine_confirm": "¿Borrar todo lo que has agregado personalmente a la pizarra (tus trazos y notas)? Esto no afectará el trabajo de los demás.",

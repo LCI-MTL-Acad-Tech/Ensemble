@@ -14,9 +14,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-bin/
-lib/
-lib64/
 
 # OS cruft
 .DS_Store

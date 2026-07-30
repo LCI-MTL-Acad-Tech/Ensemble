@@ -32,7 +32,7 @@
   "whiteboard_thickness": "Épaisseur",
   "whiteboard_postit_bg": "Fond",
   "whiteboard_postit_text": "Texte",
-  "whiteboard_postit_fontsize": "Taille du texte",
+  "whiteboard_postit_fontsize": "Taille des nouvelles notes",
   "whiteboard_undo": "Annuler",
   "whiteboard_erase_mine": "Effacer mon travail",
   "whiteboard_erase_mine_confirm": "Effacer tout ce que vous avez personnellement ajouté au tableau (vos traits et vos notes)? Cela n'affectera pas le travail des autres.",

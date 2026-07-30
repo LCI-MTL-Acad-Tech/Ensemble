@@ -32,7 +32,7 @@
   "whiteboard_thickness": "Thickness",
   "whiteboard_postit_bg": "Background",
   "whiteboard_postit_text": "Text",
-  "whiteboard_postit_fontsize": "Text size",
+  "whiteboard_postit_fontsize": "Size for new notes",
   "whiteboard_undo": "Undo",
   "whiteboard_erase_mine": "Erase my work",
   "whiteboard_erase_mine_confirm": "Erase everything you've personally added to the whiteboard (your strokes and post-its)? This won't affect anyone else's work.",
