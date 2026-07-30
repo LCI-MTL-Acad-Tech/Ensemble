@@ -411,6 +411,11 @@ class QnaModerateRequest(BaseModel):
     answered: bool = True
 
 
+class QnaApprovalRequest(BaseModel):
+    question_id: str
+    value: str  # "approved" or "disapproved"
+
+
 class QnaDeleteRequest(BaseModel):
     question_id: str
 
@@ -610,9 +615,9 @@ async def api_qna_answer(req: QnaModerateRequest):
     return {"ok": True}
 
 
-@app.post("/api/admin/qna/approve")
-async def api_qna_approve(req: QnaModerateRequest):
-    live.set_qna_approved(req.question_id, req.answered)
+@app.post("/api/admin/qna/approval")
+async def api_qna_approval(req: QnaApprovalRequest):
+    live.set_qna_approval(req.question_id, req.value)
     await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
     return {"ok": True}
 
@@ -686,3 +691,11 @@ app.mount("/static", StaticFiles(directory=CLIENT_DIR), name="static")
 @app.get("/")
 async def index():
     return FileResponse(CLIENT_DIR / "index.html")
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    # Some browsers request this at the root regardless of the <link
+    # rel="icon"> tags in index.html, so it needs its own route rather
+    # than relying solely on /static/favicon.ico being found via a link.
+    return FileResponse(CLIENT_DIR / "favicon.ico")

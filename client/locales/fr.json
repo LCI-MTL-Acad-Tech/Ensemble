@@ -141,7 +141,7 @@
   "drawer_qna": "Questions",
   "drawer_timer": "Minuterie",
   "drawer_qr": "Rejoindre par code QR",
-  "qr_hint": "Faites-le scanner sur l'écran de quelqu'un pour rejoindre — il pointe toujours vers l'adresse actuellement ouverte, donc ça fonctionne peu importe le port ou l'adresse IP.",
+  "qr_hint": "D'autres peuvent scanner ceci pour rejoindre.",
   "nav_groups": "Groupes",
 
   "qna_placeholder": "Posez une question…",
@@ -149,6 +149,7 @@
   "qna_empty": "Aucune question pour le moment — soyez la première personne à en poser une.",
   "qna_answered_label": "Répondue",
   "qna_approved_title": "Approuvée par l'enseignant·e",
+  "qna_disapproved_title": "Désapprouvée par l'enseignant·e",
 
   "admin_qna_title": "Modération des questions",
   "admin_qna_empty": "Aucune question pour le moment.",

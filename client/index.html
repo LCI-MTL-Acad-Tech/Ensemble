@@ -9,6 +9,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Classroom Live</title>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">
+<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -129,7 +133,7 @@
     <button class="drawer-close" data-target="qr">✕</button>
   </div>
   <div class="drawer-body">
-    <p class="hint" data-i18n="qr_hint">Scan this on someone's screen to join — it always points at whatever address is currently open, so it works on any port or IP.</p>
+    <p class="hint" data-i18n="qr_hint">Others can scan this to join.</p>
     <div id="qr-code-display"></div>
     <p id="qr-url-text" class="qr-url-text"></p>
   </div>
@@ -139,17 +143,15 @@
 
   <section class="view active" id="view-whiteboard">
     <div id="whiteboard-toolbar">
-      <div class="wb-tool-select">
+      <div class="wb-group active" id="wb-pen-group">
         <button id="wb-tool-pen" class="primary" data-i18n="whiteboard_pen">Pen</button>
-        <button id="wb-tool-postit" data-i18n="whiteboard_postit">Post-it</button>
-      </div>
-      <div class="wb-tool-options" id="wb-pen-options">
         <label class="wb-inline-label" data-i18n="whiteboard_color">Colour</label>
         <input type="color" id="wb-color" value="#2f6690" title="Pen colour">
         <label class="wb-inline-label" data-i18n="whiteboard_thickness">Thickness</label>
         <input type="range" id="wb-size" min="1" max="20" value="3" title="Pen thickness">
       </div>
-      <div class="wb-tool-options" id="wb-postit-options" hidden>
+      <div class="wb-group" id="wb-postit-group">
+        <button id="wb-tool-postit" data-i18n="whiteboard_postit">Post-it</button>
         <label class="wb-inline-label" data-i18n="whiteboard_postit_bg">Background</label>
         <input type="color" id="wb-postit-bg" value="#fff59d" title="Note background colour">
         <label class="wb-inline-label" data-i18n="whiteboard_postit_text">Text</label>

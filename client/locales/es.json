@@ -141,7 +141,7 @@
   "drawer_qna": "Preguntas",
   "drawer_timer": "Temporizador",
   "drawer_qr": "Unirse con código QR",
-  "qr_hint": "Haz que alguien escanee esto desde su pantalla para unirse — siempre apunta a la dirección actualmente abierta, así que funciona sin importar el puerto o la IP.",
+  "qr_hint": "Otros pueden escanear esto para unirse.",
   "nav_groups": "Grupos",
 
   "qna_placeholder": "Haz una pregunta…",
@@ -149,6 +149,7 @@
   "qna_empty": "Todavía no hay preguntas — sé la primera persona en preguntar.",
   "qna_answered_label": "Respondida",
   "qna_approved_title": "Aprobada por el/la instructor/a",
+  "qna_disapproved_title": "Desaprobada por el/la instructor/a",
 
   "admin_qna_title": "Moderación de preguntas",
   "admin_qna_empty": "Todavía no hay preguntas.",

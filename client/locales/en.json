@@ -141,7 +141,7 @@
   "drawer_qna": "Q&A",
   "drawer_timer": "Timer",
   "drawer_qr": "Join by QR code",
-  "qr_hint": "Scan this on someone's screen to join — it always points at whatever address is currently open, so it works on any port or IP.",
+  "qr_hint": "Others can scan this to join.",
   "nav_groups": "Groups",
 
   "qna_placeholder": "Ask a question…",
@@ -149,6 +149,7 @@
   "qna_empty": "No questions yet — be the first to ask.",
   "qna_answered_label": "Answered",
   "qna_approved_title": "Instructor-approved",
+  "qna_disapproved_title": "Instructor-disapproved",
 
   "admin_qna_title": "Q&A moderation",
   "admin_qna_empty": "No questions yet.",

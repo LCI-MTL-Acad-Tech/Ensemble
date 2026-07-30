@@ -63,13 +63,13 @@ place):
   as both the picker and the overview: click a lamp (🙂 doing ok, 😕
   confused, 🆘 stuck, 💤 away) to set your own status, the number shows
   how many people are currently on it, and a small ▸ marks your own pick.
-- **Q&A** — anonymous question queue with 👍/👎 reactions. Nobody's name
-  is ever attached to a question or a reaction — the server doesn't store
-  who asked or who reacted. Sorted unanswered-first, then by (👍 − 👎).
-  The instructor can additionally mark a question **approved** (★) from
-  `control.py` — a curation signal that's independent of "answered": a
-  question can be worth everyone's attention whether or not it's been
-  dealt with yet.
+- **Q&A** — anonymous question queue. Everyone reacts with 👍/👎, which
+  just affects sort order (unanswered-first, then by 👍 − 👎) — nobody's
+  name is ever attached to a question or a reaction. Separately, the
+  instructor can mark a question **★ approved** or **🛑 disapproved**
+  from `control.py` — a curation call, independent of both "answered" and
+  the room's votes, and independent of each other too (marking one clears
+  the other; marking the same one again clears it back to neither).
 - **Timer** — a shared countdown for group work. View-only for students;
   the instructor sets the duration and starts/pauses/resets it from
   `control.py`, and everyone's display ticks in sync since the server
@@ -482,10 +482,13 @@ These don't need a JSON template — they're driven entirely from
   people ask, reacted to with 👍/👎. Moderate with `python control.py qna
   list` / `qna answer <id>` (toggle answered — it stays visible but grays
   out and sinks to the bottom, so there's still a record of what was
-  asked) / `qna approve <id>` (toggle a ★ curation mark, independent of
-  answered) / `qna delete <id>` / `qna clear`. Anonymity is structural,
-  not just a UI choice — the server never stores a name against a
-  question or a reaction, so there's nothing to accidentally leak later.
+  asked) / `qna approve <id>` / `qna disapprove <id>` (★/🛑 curation
+  marks, instructor-only, independent of both "answered" and the room's
+  votes — running the same one twice clears it, running the other one
+  switches straight over) / `qna delete <id>` / `qna clear`. Anonymity is
+  structural, not just a UI choice — the server never stores a name
+  against a question or a reaction, so there's nothing to accidentally
+  leak later.
 - **Groups** — `python control.py groups make --mode size --param 4` for
   groups targeting 4 people each, or `--mode count --param 3` for exactly
   3 groups sized as evenly as possible. With `--mode size`, if the

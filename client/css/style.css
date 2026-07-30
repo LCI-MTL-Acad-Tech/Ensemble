@@ -274,10 +274,10 @@ main#views {
 .lamp-btn .selected-mark { opacity: 0; color: var(--accent); font-size: 1.2rem; }
 .lamp-btn.selected { border-color: var(--accent); background: var(--accent-soft); }
 .lamp-btn.selected .selected-mark { opacity: 1; }
-.lamp-btn[data-color="green"] { border-left: 6px solid var(--green); }
-.lamp-btn[data-color="yellow"] { border-left: 6px solid var(--yellow); }
-.lamp-btn[data-color="red"] { border-left: 6px solid var(--red); }
-.lamp-btn[data-color="gray"] { border-left: 6px solid var(--gray); }
+.lamp-btn[data-color="green"] { border-left: 18px solid var(--green); }
+.lamp-btn[data-color="yellow"] { border-left: 18px solid var(--yellow); }
+.lamp-btn[data-color="red"] { border-left: 18px solid var(--red); }
+.lamp-btn[data-color="gray"] { border-left: 18px solid var(--gray); }
 
 #traffic-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .traffic-chip {
@@ -326,11 +326,20 @@ main#views {
 #poll-chart { margin-top: 1.25rem; }
 
 /* ---------- Whiteboard ---------- */
-#whiteboard-toolbar { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; }
-.wb-tool-select { display: flex; gap: 0.4rem; }
-.wb-tool-options { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+#whiteboard-toolbar { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem; }
+.wb-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+}
+.wb-group.active { border-color: var(--accent); background: var(--accent-soft); }
 .wb-inline-label { font-size: 0.8rem; color: var(--ink-soft); }
-.wb-actions { display: flex; gap: 0.5rem; margin-left: auto; }
+.wb-actions { display: flex; gap: 0.5rem; }
 #whiteboard-wrap { position: relative; flex: 1; min-height: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: #fff; }
 [data-theme="dark"] #whiteboard-wrap { background: #20242b; }
 #whiteboard-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -670,11 +679,12 @@ footer.appfoot {
 .qna-row.answered { opacity: 0.55; }
 .qna-row.answered .qna-text { text-decoration: line-through; }
 .qna-text { flex: 1; }
-.qna-approved-badge {
+.qna-approval-badge {
   font-size: 0.9rem;
-  color: var(--yellow);
   flex-shrink: 0;
 }
+.qna-approval-badge.qna-approved { color: var(--yellow); }
+.qna-approval-badge.qna-disapproved { color: var(--red); }
 .qna-answered-badge {
   font-size: 0.7rem;
   color: var(--green);

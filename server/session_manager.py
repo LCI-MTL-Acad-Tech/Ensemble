@@ -483,6 +483,12 @@ class Session:
         self.state["ui"]["pinned_tab"] = target
 
     # ---- anonymous Q&A queue ----
+    #
+    # Two independent signals live on each question, deliberately kept
+    # separate: "reactions" (👍/👎) are for everyone, anonymous, and just
+    # affect sort order; "approval" (★ approved / 🛑 disapproved) is an
+    # instructor-only curation call, made from control.py, not something
+    # participants can set on each other's or their own questions.
 
     def add_qna_question(self, text: str) -> dict:
         text = text.strip()[:500]
@@ -491,7 +497,8 @@ class Session:
         qid = str(uuid.uuid4())
         q = {
             "id": qid, "text": text, "reactions": {},  # client_id -> "up"|"down"
-            "answered": False, "approved": False, "ts": time.time(),
+            "answered": False, "approval": None,  # None | "approved" | "disapproved"
+            "ts": time.time(),
         }
         self.state["qna"]["questions"][qid] = q
         return q
@@ -514,14 +521,15 @@ class Session:
         q["answered"] = answered
         return True
 
-    def set_qna_approved(self, question_id: str, approved: bool) -> bool:
-        """Instructor's curation signal — orthogonal to 'answered': marks
-        a question as one worth everyone's attention, independent of
-        whether it's been dealt with yet."""
+    def set_qna_approval(self, question_id: str, value: str) -> bool:
+        """Instructor-only curation call, orthogonal to 'answered'. Toggle
+        behavior: setting the same value again clears it back to neither;
+        setting the other value switches straight over (a question can't
+        be both approved and disapproved at once)."""
         q = self.state["qna"]["questions"].get(question_id)
-        if not q:
+        if not q or value not in ("approved", "disapproved"):
             return False
-        q["approved"] = approved
+        q["approval"] = None if q.get("approval") == value else value
         return True
 
     def delete_qna_question(self, question_id: str) -> bool:

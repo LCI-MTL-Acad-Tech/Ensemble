@@ -213,15 +213,19 @@ def cmd_qna(url, args):
             up = sum(1 for r in q["reactions"].values() if r == "up")
             down = sum(1 for r in q["reactions"].values() if r == "down")
             answered_mark = "✓" if q["answered"] else " "
-            approved_mark = "★" if q.get("approved") else " "
-            print(f"  [{answered_mark}][{approved_mark}] 👍{up} 👎{down}  {q['text']}   (id: {qid})")
-        print("  ([answered] [approved] — approved is your own curation signal, separate from answered)")
+            approval = q.get("approval")
+            approval_mark = "★" if approval == "approved" else ("🛑" if approval == "disapproved" else " ")
+            print(f"  [{answered_mark}][{approval_mark}] 👍{up} 👎{down}  {q['text']}   (id: {qid})")
+        print("  ([answered] [★ approved / 🛑 disapproved] — instructor-only, separate from the room's 👍/👎)")
     elif args.action == "answer":
         call(url, "POST", "/api/admin/qna/answer", {"question_id": args.id, "answered": not args.unanswer})
         print("Updated.")
     elif args.action == "approve":
-        call(url, "POST", "/api/admin/qna/approve", {"question_id": args.id, "answered": not args.unapprove})
-        print("Updated.")
+        call(url, "POST", "/api/admin/qna/approval", {"question_id": args.id, "value": "approved"})
+        print("Toggled ★ approved.")
+    elif args.action == "disapprove":
+        call(url, "POST", "/api/admin/qna/approval", {"question_id": args.id, "value": "disapproved"})
+        print("Toggled 🛑 disapproved.")
     elif args.action == "delete":
         call(url, "POST", "/api/admin/qna/delete", {"question_id": args.id})
         print("Deleted.")
@@ -525,8 +529,10 @@ def build_parser() -> argparse.ArgumentParser:
     qna_sub = qna.add_subparsers(dest="action", required=True)
     qna_sub.add_parser("list")
     s = qna_sub.add_parser("answer"); s.add_argument("id"); s.add_argument("--unanswer", action="store_true")
-    s = qna_sub.add_parser("approve", help="Mark a question as instructor-approved (independent of answered).")
-    s.add_argument("id"); s.add_argument("--unapprove", action="store_true")
+    s = qna_sub.add_parser("approve", help="Toggle ★ approved (instructor-only; clicking again clears it).")
+    s.add_argument("id")
+    s = qna_sub.add_parser("disapprove", help="Toggle 🛑 disapproved (instructor-only; clicking again clears it).")
+    s.add_argument("id")
     s = qna_sub.add_parser("delete"); s.add_argument("id")
     qna_sub.add_parser("clear")
 
@@ -601,7 +607,7 @@ Classroom Live — control menu
   5) Fill-in-the-blanks: load / reset
   6) Order the steps: load / reveal / reset
   7) Self-assessment radar: load / reset
-  8) Q&A: list / answer / approve / delete / clear
+  8) Q&A: list / answer / approve / disapprove / delete / clear
   9) Groups: make / clear
  10) Timer: set / start / pause / reset
  11) Clear tag cloud

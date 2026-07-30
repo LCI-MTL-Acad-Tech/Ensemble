@@ -3,10 +3,11 @@
 // See index.html's footer for the full attribution note.
 // Anonymous Q&A: nobody's name is ever attached to a question or a
 // reaction — the server doesn't even store it. Sorted unanswered-first,
-// then by (thumbs up - thumbs down), then by submission time. "Approved"
-// is the instructor's own curation signal (set via control.py), separate
-// from "answered" — a question can be approved as worth everyone's
-// attention whether or not it's been dealt with yet.
+// then by (thumbs up - thumbs down), then by submission time. Approval
+// (★ approved / 🛑 disapproved) is the instructor's own curation call,
+// set via control.py — separate from the room's 👍/👎, and separate
+// from "answered" too: a question can be flagged either way whether or
+// not it's been dealt with yet.
 const QnaModule = (() => {
   let lastState = null;
 
@@ -64,7 +65,8 @@ const QnaModule = (() => {
         row.className = "qna-row" + (q.answered ? " answered" : "");
         row.innerHTML = `
           <span class="qna-text">${escapeHtml(q.text)}</span>
-          ${q.approved ? `<span class="qna-approved-badge" title="${I18N.t("qna_approved_title")}">★</span>` : ""}
+          ${q.approval === "approved" ? `<span class="qna-approval-badge qna-approved" title="${I18N.t("qna_approved_title")}">★</span>` : ""}
+          ${q.approval === "disapproved" ? `<span class="qna-approval-badge qna-disapproved" title="${I18N.t("qna_disapproved_title")}">🛑</span>` : ""}
           ${q.answered ? `<span class="qna-answered-badge">${I18N.t("qna_answered_label")}</span>` : ""}
           <span class="qna-reactions">
             <button class="qna-react-btn ${mine === "up" ? "chosen" : ""}" data-reaction="up">👍 <span>${up}</span></button>

@@ -228,20 +228,20 @@ const WhiteboardModule = (() => {
   function initToolSwitching() {
     const penBtn = document.getElementById("wb-tool-pen");
     const postitBtn = document.getElementById("wb-tool-postit");
-    const penOptions = document.getElementById("wb-pen-options");
-    const postitOptions = document.getElementById("wb-postit-options");
+    const penGroup = document.getElementById("wb-pen-group");
+    const postitGroup = document.getElementById("wb-postit-group");
 
     penBtn.addEventListener("click", () => {
       penBtn.classList.add("primary");
       postitBtn.classList.remove("primary");
-      penOptions.hidden = false;
-      postitOptions.hidden = true;
+      penGroup.classList.add("active");
+      postitGroup.classList.remove("active");
     });
     postitBtn.addEventListener("click", () => {
       postitBtn.classList.add("primary");
       penBtn.classList.remove("primary");
-      postitOptions.hidden = false;
-      penOptions.hidden = true;
+      postitGroup.classList.add("active");
+      penGroup.classList.remove("active");
     });
   }
 
