@@ -140,6 +140,8 @@
 
   "drawer_qna": "Questions",
   "drawer_timer": "Minuterie",
+  "drawer_qr": "Rejoindre par code QR",
+  "qr_hint": "Faites-le scanner sur l'écran de quelqu'un pour rejoindre — il pointe toujours vers l'adresse actuellement ouverte, donc ça fonctionne peu importe le port ou l'adresse IP.",
   "nav_groups": "Groupes",
 
   "qna_placeholder": "Posez une question…",

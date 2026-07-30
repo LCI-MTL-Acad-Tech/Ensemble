@@ -37,6 +37,9 @@
   <button class="drawer-toggle" id="toggle-timer-drawer" data-target="timer" title="Timer">
     ⏱<span class="pin-badge" hidden>📌</span>
   </button>
+  <button class="drawer-toggle" id="toggle-qr-drawer" data-target="qr" title="Join by QR code">
+    📱
+  </button>
 
   <button id="viewer-mode-toggle" title="Presenter mode — enlarges the UI and disables editing for a projector display" data-i18n="viewer_mode_off">👁 Viewer mode</button>
 
@@ -117,6 +120,18 @@
   </div>
   <div class="drawer-body">
     <div id="timer-body"></div>
+  </div>
+</aside>
+
+<aside class="drawer" id="drawer-qr">
+  <div class="drawer-header">
+    <span data-i18n="drawer_qr">Join by QR code</span>
+    <button class="drawer-close" data-target="qr">✕</button>
+  </div>
+  <div class="drawer-body">
+    <p class="hint" data-i18n="qr_hint">Scan this on someone's screen to join — it always points at whatever address is currently open, so it works on any port or IP.</p>
+    <div id="qr-code-display"></div>
+    <p id="qr-url-text" class="qr-url-text"></p>
   </div>
 </aside>
 
@@ -210,6 +225,8 @@
 <script src="/static/js/modules/qna.js"></script>
 <script src="/static/js/modules/groups.js"></script>
 <script src="/static/js/modules/timer.js"></script>
+<script src="/static/js/vendor/qrcode.js"></script>
+<script src="/static/js/modules/qr.js"></script>
 <script src="/static/js/app.js"></script>
 </body>
 </html>

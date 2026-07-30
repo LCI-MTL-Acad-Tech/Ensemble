@@ -309,6 +309,166 @@ def cmd_moderation(url, args):
         print(f"Reset to the {len(r['words'])} shipped default word(s).")
 
 
+# ---------------------------------------------------------------- facilitator script runner
+#
+# A script is a JSON file: {"title": "...", "steps": [{"name": ..., "say": ...,
+# "actions": [...]}]}. Each action is a small dict with a "cmd" and whatever
+# parameters that action needs — see _script_action() for the full list.
+# Actions are deliberately idempotent (loading/pinning something twice just
+# redoes it) so that stepping "back" to redo a previous step is always safe:
+# it doesn't try to diff or undo state, it just re-runs whatever that step
+# does, which is enough to bring the room's screens back to where they were.
+
+def _script_action(url: str, action: dict, base_dir: Path) -> str:
+    cmd = action["cmd"]
+
+    if cmd == "pin":
+        call(url, "POST", "/api/admin/pin", {"target": action["target"]})
+        return f"pinned everyone to {action['target']}"
+    if cmd == "pin_clear":
+        call(url, "POST", "/api/admin/pin/clear")
+        return "cleared the pin"
+    if cmd == "order_load":
+        t = load_json_file(str(base_dir / action["file"]))
+        call(url, "POST", "/api/admin/order/load", {
+            "title": t.get("title", ""), "criterion": t.get("criterion", ""), "elements": t.get("elements", []),
+        })
+        if action.get("pin"):
+            call(url, "POST", "/api/admin/pin", {"target": "order"})
+        return f"loaded order exercise ({action['file']})" + (", pinned" if action.get("pin") else "")
+    if cmd == "order_reveal":
+        call(url, "POST", "/api/admin/order/reveal")
+        return "revealed the order answer key"
+    if cmd == "order_reset":
+        call(url, "POST", "/api/admin/order/reset")
+        return "reset the order exercise"
+    if cmd == "blanks_load":
+        t = load_json_file(str(base_dir / action["file"]))
+        call(url, "POST", "/api/admin/blanks/load", {
+            "title": t.get("title", ""), "text": t.get("text", ""),
+            "answers": t.get("answers", {}), "distractors": t.get("distractors", []),
+        })
+        if action.get("pin"):
+            call(url, "POST", "/api/admin/pin", {"target": "blanks"})
+        return f"loaded blanks exercise ({action['file']})" + (", pinned" if action.get("pin") else "")
+    if cmd == "blanks_reset":
+        call(url, "POST", "/api/admin/blanks/reset")
+        return "reset the blanks exercise"
+    if cmd == "spider_load":
+        t = load_json_file(str(base_dir / action["file"]))
+        call(url, "POST", "/api/admin/spider/load", {"title": t.get("title", ""), "axes": t.get("axes", [])})
+        if action.get("pin"):
+            call(url, "POST", "/api/admin/pin", {"target": "spider"})
+        return f"loaded self-assessment axes ({action['file']})" + (", pinned" if action.get("pin") else "")
+    if cmd == "spider_reset":
+        call(url, "POST", "/api/admin/spider/reset")
+        return "reset self-assessment responses"
+    if cmd == "poll_start":
+        call(url, "POST", "/api/admin/poll", {
+            "question": action["question"], "options": action["options"], "type": action.get("type", "bar"),
+        })
+        if action.get("pin"):
+            call(url, "POST", "/api/admin/pin", {"target": "poll"})
+        return "started the poll" + (", pinned" if action.get("pin") else "")
+    if cmd == "poll_close":
+        call(url, "POST", "/api/admin/poll/close")
+        return "closed the poll"
+    if cmd == "groups_make":
+        call(url, "POST", "/api/admin/groups/make", {"mode": action.get("mode", "size"), "param": action.get("param", 4)})
+        if action.get("pin"):
+            call(url, "POST", "/api/admin/pin", {"target": "groups"})
+        return "made groups" + (", pinned" if action.get("pin") else "")
+    if cmd == "groups_clear":
+        call(url, "POST", "/api/admin/groups/clear")
+        return "cleared groups"
+    if cmd == "timer_set":
+        call(url, "POST", "/api/admin/timer/set", {"seconds": round(action["minutes"] * 60)})
+        return f"timer set to {action['minutes']} min"
+    if cmd == "timer_start":
+        call(url, "POST", "/api/admin/timer/start")
+        return "timer started"
+    if cmd == "timer_pause":
+        call(url, "POST", "/api/admin/timer/pause")
+        return "timer paused"
+    if cmd == "timer_reset":
+        call(url, "POST", "/api/admin/timer/reset")
+        return "timer reset"
+    if cmd == "tags_clear":
+        call(url, "POST", "/api/admin/tags/clear")
+        return "cleared the tag cloud"
+    if cmd == "session_reset":
+        call(url, "POST", "/api/admin/reset", {})
+        return "reset the whole session"
+    if cmd == "whiteboard_clear":
+        call(url, "POST", "/api/admin/whiteboard/clear")
+        return "cleared the whiteboard for everyone"
+
+    raise ApiError(f"Unknown script action: {cmd!r}")
+
+
+def _run_step(url: str, step: dict, base_dir: Path, index: int, total: int) -> None:
+    print(f"\n[{index + 1}/{total}] {step['name']}")
+    if step.get("say"):
+        print(f'  Say: "{step["say"]}"')
+    for action in step.get("actions", []):
+        try:
+            print(f"    -> {_script_action(url, action, base_dir)}")
+        except ApiError as e:
+            print(f"    !! {e}", file=sys.stderr)
+
+
+def run_script(url: str, path: str) -> None:
+    script_path = Path(path)
+    data = load_json_file(path)
+    steps = data.get("steps", [])
+    if not steps:
+        print("Script has no steps.")
+        return
+    base_dir = script_path.parent
+    current = 0
+
+    print(f"\nScript: {data.get('title', path)} — {len(steps)} steps.")
+    _run_step(url, steps[current], base_dir, current, len(steps))
+
+    while True:
+        try:
+            raw = input("\n[Enter]=next  b=back  r=repeat  g N=goto  l=list  q=quit > ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
+
+        if raw in ("q", "quit"):
+            return
+        if raw in ("l", "list"):
+            for i, s in enumerate(steps):
+                marker = "->" if i == current else "  "
+                print(f"  {marker} {i + 1}. {s['name']}")
+            continue
+        if raw in ("r", "repeat"):
+            pass  # re-run the current step as-is
+        elif raw in ("b", "back"):
+            current = max(0, current - 1)
+        elif raw.startswith("g"):
+            parts = raw.split()
+            if len(parts) == 2 and parts[1].isdigit() and 1 <= int(parts[1]) <= len(steps):
+                current = int(parts[1]) - 1
+            else:
+                print("  usage: g <step number>")
+                continue
+        else:  # Enter or anything unrecognized = advance
+            if current == len(steps) - 1:
+                print("  (already on the last step — b to revisit, q to quit)")
+                continue
+            current += 1
+
+        _run_step(url, steps[current], base_dir, current, len(steps))
+
+
+def cmd_script(url, args):
+    if args.action == "run":
+        run_script(url, args.file)
+
+
 # ---------------------------------------------------------------- CLI wiring
 
 def build_parser() -> argparse.ArgumentParser:
@@ -393,6 +553,10 @@ def build_parser() -> argparse.ArgumentParser:
     log.add_argument("--n", type=int, default=30, help="How many entries to show (default 30)")
     log.add_argument("--activity", choices=["blanks", "order"], default=None, help="Filter to one activity")
 
+    script = sub.add_parser("script", help="Step through a facilitator run-sheet (JSON) — next/back/goto, safe to redo a step.")
+    script_sub = script.add_subparsers(dest="action", required=True)
+    s = script_sub.add_parser("run"); s.add_argument("file")
+
     sub.add_parser("tags", help="Clear the tag cloud.").set_defaults(action="clear")
 
     mod = sub.add_parser("moderation", help="Manage the chat word-filter denylist.")
@@ -411,7 +575,7 @@ DISPATCH = {
     "status": cmd_status, "pin": cmd_pin, "session": cmd_session, "poll": cmd_poll,
     "blanks": cmd_blanks, "order": cmd_order, "spider": cmd_spider, "qna": cmd_qna,
     "groups": cmd_groups, "timer": cmd_timer, "tags": cmd_tags, "moderation": cmd_moderation,
-    "whiteboard": cmd_whiteboard, "log": cmd_log,
+    "whiteboard": cmd_whiteboard, "log": cmd_log, "script": cmd_script,
 }
 
 
@@ -444,6 +608,7 @@ Classroom Live — control menu
  12) Chat moderation: list / add / remove / load / save / reset
  13) Whiteboard: clear (for everyone)
  14) Log: recent move requests (applied/denied) on blanks + order
+ 15) Script: step through a facilitator run-sheet (next/back/goto)
   q) Quit
 
 Enter a number, or type a full command line (e.g. "pin poll"): """
@@ -454,7 +619,7 @@ def interactive(url: str) -> None:
     shortcuts = {
         "1": "status", "2": "pin ", "3": "session ", "4": "poll ", "5": "blanks ",
         "6": "order ", "7": "spider ", "8": "qna ", "9": "groups ", "10": "timer ",
-        "11": "tags", "12": "moderation ", "13": "whiteboard ", "14": "log",
+        "11": "tags", "12": "moderation ", "13": "whiteboard ", "14": "log", "15": "script ",
     }
     while True:
         try:

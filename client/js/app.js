@@ -33,7 +33,7 @@
   }
 
   function openDrawer(target) {
-    ["chat", "traffic", "qna", "timer"].forEach((t) => {
+    ["chat", "traffic", "qna", "timer", "qr"].forEach((t) => {
       document.getElementById(`drawer-${t}`).classList.toggle("open", t === target);
     });
     document.getElementById("drawer-backdrop").classList.add("open");
@@ -248,6 +248,7 @@
     QnaModule.init();
     GroupsModule.init();
     TimerModule.init();
+    QrModule.init();
 
     WSHub.connect();
   }

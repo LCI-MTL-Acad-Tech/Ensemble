@@ -541,10 +541,27 @@ class Session:
             groups = [[] for _ in range(k)]
             for i, p in enumerate(people):
                 groups[i % k].append(p)
-        else:  # "size"
+        else:  # "size" — target size k
+            # Never let a group end up smaller than k: keep the group
+            # count anchored at floor(n/k), and fold the remainder into
+            # that many groups by growing them past k rather than
+            # spinning off a small leftover group or shrinking anyone
+            # below k. (If there are more leftover people than there are
+            # groups to spread them across — e.g. 8 people at size 5 only
+            # gives you one full group — they all fold into that same
+            # group rather than creating a second, tiny one.)
             size = max(1, int(param))
-            for i in range(0, len(people), size):
-                groups.append(people[i:i + size])
+            n = len(people)
+            if n == 0:
+                groups = []
+            else:
+                num_groups = max(1, n // size)
+                base, extra = divmod(n, num_groups)
+                idx = 0
+                for i in range(num_groups):
+                    this_size = base + 1 if i < extra else base
+                    groups.append(people[idx:idx + this_size])
+                    idx += this_size
         self.state["groups"] = {
             "mode": mode if mode in ("size", "count") else "size",
             "param": param,

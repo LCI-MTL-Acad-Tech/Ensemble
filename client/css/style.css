@@ -571,6 +571,28 @@ nav#tabs button.just-activated {
   flex-direction: column;
 }
 
+/* ---------- QR join code ---------- */
+#qr-code-display {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  margin-top: 0.75rem;
+  /* white background stays fixed regardless of app theme — a dark-mode
+     QR code with inverted colors won't scan reliably on most phones */
+}
+.qr-url-text {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-top: 0.75rem;
+  word-break: break-all;
+}
+
 /* ---------- Attribution footer ---------- */
 #viewer-mode-toggle { font-size: 0.85rem; }
 #viewer-mode-toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); }

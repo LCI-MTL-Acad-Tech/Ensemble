@@ -140,6 +140,8 @@
 
   "drawer_qna": "Preguntas",
   "drawer_timer": "Temporizador",
+  "drawer_qr": "Unirse con código QR",
+  "qr_hint": "Haz que alguien escanee esto desde su pantalla para unirse — siempre apunta a la dirección actualmente abierta, así que funciona sin importar el puerto o la IP.",
   "nav_groups": "Grupos",
 
   "qna_placeholder": "Haz una pregunta…",

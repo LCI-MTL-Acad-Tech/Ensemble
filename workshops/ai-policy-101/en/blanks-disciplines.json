@@ -1,0 +1,16 @@
+{
+  "title": "Match the concern to the discipline",
+  "text": "Nursing and Health Sciences: {{1}} Computer Science and IT: {{2}} Design and Creative Arts: {{3}} Business and Administration: {{4}} Literature and the Humanities: {{5}}",
+  "answers": {
+    "1": "Will students lose the clinical judgment they can only build by reasoning through cases themselves?",
+    "2": "Are students shipping code they can't actually explain or debug?",
+    "3": "Is the work still recognizably theirs if AI generated large parts of it?",
+    "4": "Are polished-looking reports resting on AI-fabricated data or sources?",
+    "5": "Is close reading and argument-building disappearing in favor of AI summaries?"
+  },
+  "distractors": [
+    "Is the electricity and water cost of every query worth it?",
+    "Can we actually prove misconduct with an AI detector?",
+    "Do we have enough institutional licenses for everyone who wants to try this?"
+  ]
+}

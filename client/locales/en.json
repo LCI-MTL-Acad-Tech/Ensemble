@@ -140,6 +140,8 @@
 
   "drawer_qna": "Q&A",
   "drawer_timer": "Timer",
+  "drawer_qr": "Join by QR code",
+  "qr_hint": "Scan this on someone's screen to join — it always points at whatever address is currently open, so it works on any port or IP.",
   "nav_groups": "Groups",
 
   "qna_placeholder": "Ask a question…",

@@ -1,0 +1,19 @@
+{
+  "title": "Facts worth remembering",
+  "text": "A single request to a large language model uses roughly {{1}} times more energy than a typical web search. Under Quebec's privacy law, known as {{2}}, work that students submit belongs to them — which is exactly why free AI tools may never be used to grade or comment on student work without their {{3}}. AI detectors should never be treated as proof of misconduct on their own: they produce frequent {{4}} against strong, fluent writing, and are biased against {{5}} speakers — so at best they can point an investigation in a direction, never close it. Probably the single most reliable way to confirm a student actually understands their own work is to ask for an {{6}}.",
+  "answers": {
+    "1": "ten",
+    "2": "Law 25",
+    "3": "informed consent",
+    "4": "false positives",
+    "5": "non-native English",
+    "6": "oral defense"
+  },
+  "distractors": [
+    "five",
+    "GDPR",
+    "a signed waiver",
+    "true negatives",
+    "written quiz"
+  ]
+}

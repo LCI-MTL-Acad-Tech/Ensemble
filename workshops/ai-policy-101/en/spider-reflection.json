@@ -1,0 +1,9 @@
+{
+  "title": "Where are you now?",
+  "axes": [
+    {"id": "1", "label": "Clarity on the 5-level scale", "max": 5},
+    {"id": "2", "label": "Comfort declaring my own AI use", "max": 5},
+    {"id": "3", "label": "Confidence designing AI-resistant work", "max": 5},
+    {"id": "4", "label": "How productive was this session for you", "max": 5}
+  ]
+}

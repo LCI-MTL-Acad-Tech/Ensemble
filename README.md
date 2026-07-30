@@ -41,9 +41,13 @@ below):
 - **Self-assessment radar** — sliders per axis, live spider chart showing
   the room's spread (min–max band, interquartile band, median) with your
   own ratings drawn as a bold outline on top.
-- **Groups** — instructor generates random groups (fixed size or fixed
-  count) from whoever's currently connected; everyone sees the result as
-  cards.
+- **Groups** — instructor generates random groups from whoever's currently
+  connected, either as a fixed count or a target size; everyone sees the
+  result as cards. Target-size grouping never shrinks a group below the
+  size you asked for — if the headcount doesn't divide evenly, some
+  groups grow by one person rather than spinning off a small leftover
+  group (47 people at size 4 becomes eight groups of 4 and three of 5, not
+  eleven groups of 4 plus one of 3).
 
 **Drawers** (small side panels, reachable from any tab without losing your
 place):
@@ -70,6 +74,16 @@ place):
   the instructor sets the duration and starts/pauses/resets it from
   `control.py`, and everyone's display ticks in sync since the server
   (not each browser) is the authority on how much time is left.
+- **Join by QR code** — a 📱 toggle showing a QR code (and the plain URL
+  as a fallback) that anyone can open on their own screen so latecomers
+  can scan it off *their* device rather than needing to see the
+  instructor's. The code encodes `window.location.origin` — whatever
+  address is actually in the browser bar right now — so it's automatically
+  correct regardless of which port or LAN IP the server ended up on; there's
+  nothing to configure. Purely local to whichever screen opens it (not
+  synced over the websocket, not pin-able), since its only job is helping
+  someone who hasn't joined yet, and pinning only affects people who already
+  have.
 
 **Presenter mode** — a 👁 toggle in the top bar, available to *any*
 client, not just the instructor. Flipping it on does two things at once:
@@ -260,6 +274,50 @@ python control.py order load steps.json          # loads quietly, tab appears
 python control.py order load steps.json --pin    # loads AND sends everyone there now
 ```
 
+**Running a rehearsed session: `script run`.** For anything more than a
+handful of ad-hoc commands — a full lesson plan with a fixed sequence of
+activities — write it once as a JSON script and step through it live
+instead of retyping commands:
+
+```bash
+python control.py script run my-session/script.json
+```
+
+Each step shows its name and talking point, fires its actions (loading and
+pinning things) immediately, then waits for you: **Enter** to advance,
+**b** to go back a step (safe — it just re-runs that step's actions, which
+re-pins/re-loads whatever it was showing, so an accidental double-`next`
+is easy to recover from), **r** to redo the current step, **g N** to jump
+straight to step N, **l** to list all steps, **q** to quit the stepper
+(the live session keeps running). A script is:
+
+```json
+{
+  "title": "My session",
+  "steps": [
+    {
+      "name": "Warm-up",
+      "say": "What's on your mind about this topic?",
+      "actions": [{"cmd": "pin", "target": "tags"}]
+    },
+    {
+      "name": "Main exercise",
+      "say": "Order these from first to last.",
+      "actions": [{"cmd": "order_load", "file": "steps.json", "pin": true}]
+    }
+  ]
+}
+```
+
+`file` paths inside actions are resolved relative to the script's own
+folder. See `workshops/ai-policy-101/en/facilitator-guide.md` for a
+complete worked example (a real one-hour faculty workshop, with its script
+alongside it), and `_script_action()` in `control.py` for the full list of
+supported `cmd` values (`pin`, `pin_clear`, `order_load`/`reveal`/`reset`,
+`blanks_load`/`reset`, `spider_load`/`reset`, `poll_start`/`close`,
+`groups_make`/`clear`, `timer_set`/`start`/`pause`/`reset`, `tags_clear`,
+`session_reset`, `whiteboard_clear`).
+
 ## Managing sessions
 
 A **session** is everything currently live: chat history, statuses, tag
@@ -429,10 +487,18 @@ These don't need a JSON template — they're driven entirely from
   not just a UI choice — the server never stores a name against a
   question or a reaction, so there's nothing to accidentally leak later.
 - **Groups** — `python control.py groups make --mode size --param 4` for
-  groups of 4 people each (however many groups that takes), or
-  `--mode count --param 3` for exactly 3 groups sized as evenly as
-  possible. It only groups people who are currently connected and have
-  joined with a name — if someone joins after the fact, re-run it.
+  groups targeting 4 people each, or `--mode count --param 3` for exactly
+  3 groups sized as evenly as possible. With `--mode size`, if the
+  headcount doesn't divide evenly, groups grow past the target size
+  rather than ever shrinking below it — a group of 3 when you asked for 4
+  would defeat the point of a small-group discussion, so the algorithm
+  keeps the group *count* at `floor(headcount / size)` and folds any
+  remainder into that many groups instead of spinning off a tiny extra
+  one (50 people at size 4 → 10 groups of 4 plus 2 groups of 5 — twelve
+  groups total, not the thirteen you'd get from a naive slice, where the
+  thirteenth would be a lone group of 2). It only groups people who are
+  currently connected and have joined with a name — if someone joins
+  after the fact, re-run it.
   `python control.py groups clear` empties the Groups tab back out.
 - **Timer** — `python control.py timer set 5` (minutes) then `timer
   start`; `timer pause` freezes the remaining time (rather than losing
@@ -526,9 +592,10 @@ classroom-tool/
 │       ├── ws.js              WebSocket wrapper (auto-reconnect, pub/sub)
 │       ├── app.js             Orchestrator: tabs (incl. gating/pulse), drawers,
 │                              viewer mode, pin sync, join, settings
+│       ├── vendor/            qrcode.js (MIT, vendored — see Licensing)
 │       └── modules/           One file per feature (chat, traffic, tags, poll,
 │                              whiteboard, blanks, order, spider, groups, qna,
-│                              timer) — no admin module; there's no browser admin UI
+│                              timer, qr) — no admin module; there's no browser admin UI
 ├── sessions/                 Saved session JSON files
 ├── examples/                 Ready-to-load exercise/spider templates to try things out
 ├── logs/                     action_log.jsonl — created automatically at startup
@@ -613,6 +680,15 @@ add a new interaction type:
   font *by itself* (bundling it for free in an app is exactly the
   intended use). Nothing else to do here — pushing this repo as-is,
   fonts included, is fine.
+- **The vendored QR code library** (`client/js/vendor/qrcode.js`, used by
+  the join-by-QR-code drawer) is
+  [qrcodejs by davidshimjs](https://github.com/davidshimjs/qrcodejs),
+  MIT-licensed — see `client/js/vendor/LICENSE-qrcodejs.txt`. MIT has
+  essentially one real condition (keep the copyright notice with the
+  code, which the license file does), so bundling it locally like this is
+  fine; it's also why it's vendored as a local file rather than pulled
+  from a CDN, consistent with this app running with no internet
+  dependency once installed.
 - **Python/JS dependencies** (FastAPI, Uvicorn, Pydantic) aren't vendored
   in this repo at all — they're installed via `pip` from
   `requirements.txt`, so there's nothing of theirs to redistribute or

@@ -1,0 +1,79 @@
+{
+  "title": "AI Policy 101 (EN pilot)",
+  "steps": [
+    {
+      "name": "0:00 — Icebreaker: one word",
+      "say": "Add one word to the shared board: what's your current relationship with AI in your teaching, right now, honestly?",
+      "actions": [{"cmd": "pin", "target": "tags"}]
+    },
+    {
+      "name": "0:05 — Baseline gut-check",
+      "say": "Set your status: doing ok = I feel clear about what's allowed right now, confused = somewhat unsure, stuck = pretty lost, away = haven't thought about it yet. No wrong answer — we compare this again at the end.",
+      "actions": [{"cmd": "pin", "target": "traffic"}]
+    },
+    {
+      "name": "0:10 — Order the five AI usage levels",
+      "say": "Drag these five statements into order, from most restrictive (no AI at all) to most open (AI as a creative partner).",
+      "actions": [
+        {"cmd": "order_load", "file": "order-ai-scale.json", "pin": true}
+      ]
+    },
+    {
+      "name": "0:18 — Reveal the scale order",
+      "say": "Let's check the answer together.",
+      "actions": [{"cmd": "order_reveal"}]
+    },
+    {
+      "name": "0:20 — Match the concern to the discipline",
+      "say": "Different fields worry about different things when it comes to AI. Drag each concern into the discipline most likely to raise it — a couple of pieces are decoys.",
+      "actions": [
+        {"cmd": "blanks_load", "file": "blanks-disciplines.json", "pin": true}
+      ]
+    },
+    {
+      "name": "0:30 — Facts worth remembering",
+      "say": "Quick reinforcement round — drag the right piece into each blank. There are a couple of decoys here too.",
+      "actions": [
+        {"cmd": "blanks_load", "file": "blanks-ai-ethics.json", "pin": true}
+      ]
+    },
+    {
+      "name": "0:40 — Redesign in groups: make the groups",
+      "say": "Same base assignment for everyone: 'Write a 500-word reflection connecting a course concept to a real-world example.' Find your group on this tab.",
+      "actions": [
+        {"cmd": "groups_make", "mode": "size", "param": 4, "pin": true}
+      ]
+    },
+    {
+      "name": "0:41 — Redesign in groups: start the timer, send to whiteboard",
+      "say": "In your group, rewrite the instructions twice: once as a Level 1 version (AI only for planning), once as a Level 3 version (AI used extensively, but directed and justified). Post your Level 3 version as a sticky note.",
+      "actions": [
+        {"cmd": "timer_set", "minutes": 7},
+        {"cmd": "timer_start"},
+        {"cmd": "pin", "target": "whiteboard"}
+      ]
+    },
+    {
+      "name": "0:48 — Reset the timer after debrief",
+      "say": "Let's hear two or three Level 3 notes out loud before we move on.",
+      "actions": [{"cmd": "timer_reset"}]
+    },
+    {
+      "name": "0:50 — Closing self-check",
+      "say": "Rate yourself on these right now — no one else sees your name attached to your answer, just the shape of the room.",
+      "actions": [
+        {"cmd": "spider_load", "file": "spider-reflection.json", "pin": true}
+      ]
+    },
+    {
+      "name": "0:57 — Re-check the baseline",
+      "say": "Same check as the start. Let's see if that moved.",
+      "actions": [{"cmd": "pin", "target": "traffic"}]
+    },
+    {
+      "name": "0:58 — Open Q&A",
+      "say": "Anonymous question queue is open — ask anything, including things you didn't want to say out loud. I'll keep it open after we leave the room.",
+      "actions": [{"cmd": "pin", "target": "qna"}]
+    }
+  ]
+}
