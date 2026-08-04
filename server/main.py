@@ -422,6 +422,11 @@ class QnaApprovalRequest(BaseModel):
     value: str  # "approved" or "disapproved"
 
 
+class QnaAnswerTextRequest(BaseModel):
+    question_id: str
+    text: str
+
+
 class QnaDeleteRequest(BaseModel):
     question_id: str
 
@@ -638,6 +643,13 @@ async def api_qna_answer(req: QnaModerateRequest):
 @app.post("/api/admin/qna/approval")
 async def api_qna_approval(req: QnaApprovalRequest):
     live.set_qna_approval(req.question_id, req.value)
+    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    return {"ok": True}
+
+
+@app.post("/api/admin/qna/answer_text")
+async def api_qna_answer_text(req: QnaAnswerTextRequest):
+    live.set_qna_answer_text(req.question_id, req.text)
     await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
     return {"ok": True}
 

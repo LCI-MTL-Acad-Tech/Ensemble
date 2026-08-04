@@ -85,6 +85,18 @@
     document.getElementById("drawer-backdrop").addEventListener("click", closeDrawers);
   }
 
+  function initChromeToggle() {
+    // Below the mobile breakpoint, #topbar-extra starts hidden via CSS
+    // (see the @media rule) to give content more room. This just flips
+    // an override class — the media query still governs whether it
+    // matters at all on wider screens.
+    const btn = document.getElementById("chrome-toggle-btn");
+    const extra = document.getElementById("topbar-extra");
+    btn.addEventListener("click", () => {
+      extra.classList.toggle("chrome-visible");
+    });
+  }
+
   function initViewerMode() {
     // Presenter mode: the same "look but don't touch" toggle as before —
     // grays out and disables every control while keeping navigation
@@ -237,6 +249,7 @@
     await I18N.setLang("en");
     initTabs();
     initDrawers();
+    initChromeToggle();
     initViewerMode();
     initPinSync();
     initTabGating();

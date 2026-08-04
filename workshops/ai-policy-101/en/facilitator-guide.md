@@ -219,12 +219,13 @@ briefly unpack the two facts most likely to be new to the room:
 
 ## 0:40–0:50 — Redesign in groups
 
-**Say:** "Same base assignment for everyone: *'Write a 500-word reflection
-connecting a course concept to a real-world example.'* In your group,
-rewrite the instructions given to students twice — once as a Level 1
-version (AI only for planning) and once as a Level 3 version (AI used
-extensively, but the student must direct and justify it). When you're done,
-post your Level 3 version as a sticky note on the whiteboard."
+**Say:** "Same base assignment for everyone — up on the Slide tab now, and
+it'll stay there the whole time if you need to check it again. In your
+group, rewrite those instructions twice: once as a Level 1 version (AI
+only for planning, the reflection itself is entirely the student's own
+thinking) and once as a Level 3 version (AI used extensively, but the
+student must direct and justify it). When you're done, post your Level 3
+version as a sticky note on the Whiteboard tab."
 
 ```bash
 python control.py groups make --mode size --param 4
@@ -242,14 +243,35 @@ if you want to see the actual split before people go looking for their
 name). If discussion quality matters more than exact group size for a
 given room, `--param 3` or `--param 5` both work the same way.
 
-Give them a minute to find their group, then set a visible timer and send
-them to the whiteboard:
+Give them a minute to find their group, then show the assignment they're
+redesigning:
+
+```bash
+python control.py slide load workshops/ai-policy-101/en/slide-assignment.json --pin
+```
+
+Note this is deliberately worded as a *time-boxed, spoken* reflection —
+"spend 10 minutes reflecting... be ready to talk about it" — rather than
+a word-limited written one. An earlier version asked for "a 500-word
+reflection," which reads as something participants themselves need to
+sit down and write during the workshop, and there's nowhere in the app
+for that (post-its are for short notes, not essays). The actual written
+output of this block is the *rewritten instructions*, which do have a
+place to go — the sticky note.
+
+Once they've had a moment to read the assignment, start the timer and
+send them to the whiteboard to do the actual rewriting and posting:
 
 ```bash
 python control.py timer set 7
 python control.py timer start
 python control.py pin whiteboard
 ```
+
+The Slide tab keeps the assignment loaded even though Whiteboard is now
+the pinned tab — anyone who forgets the wording can just switch back to
+Slide manually to check it, without it being pinned there and getting in
+the way of posting notes.
 
 While they work, circulate. When the timer runs out, bring the room back
 and read two or three of the posted Level 3 notes aloud — the differences

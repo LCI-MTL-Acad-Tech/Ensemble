@@ -61,6 +61,8 @@ const QnaModule = (() => {
         const up = Object.values(q.reactions).filter((r) => r === "up").length;
         const down = Object.values(q.reactions).filter((r) => r === "down").length;
         const mine = q.reactions[myId];
+        const item = document.createElement("div");
+        item.className = "qna-item";
         const row = document.createElement("div");
         row.className = "qna-row" + (q.answered ? " answered" : "");
         row.innerHTML = `
@@ -78,7 +80,14 @@ const QnaModule = (() => {
             WSHub.send({ type: "qna_react", question_id: q.id, reaction: btn.dataset.reaction });
           });
         });
-        list.appendChild(row);
+        item.appendChild(row);
+        if (q.answer_text) {
+          const answerEl = document.createElement("div");
+          answerEl.className = "qna-answer";
+          answerEl.innerHTML = `<strong>${I18N.t("qna_answer_label")}</strong> ${escapeHtml(q.answer_text)}`;
+          item.appendChild(answerEl);
+        }
+        list.appendChild(item);
       });
     }
     body.appendChild(list);

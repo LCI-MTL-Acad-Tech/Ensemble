@@ -1,6 +1,6 @@
 {
   "title": "Match the concern to the discipline",
-  "text": "Nursing and Health Sciences: {{1}} Computer Science and IT: {{2}} Design and Creative Arts: {{3}} Business and Administration: {{4}} Literature and the Humanities: {{5}}",
+  "text": "Nursing and Health Sciences:\n{{1}}\n\nComputer Science and IT:\n{{2}}\n\nDesign and Creative Arts:\n{{3}}\n\nBusiness and Administration:\n{{4}}\n\nLiterature and the Humanities:\n{{5}}",
   "answers": {
     "1": "Will students lose the clinical judgment they can only build by reasoning through cases themselves?",
     "2": "Are students shipping code they can't actually explain or debug?",

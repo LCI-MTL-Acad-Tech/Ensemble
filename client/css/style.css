@@ -138,6 +138,24 @@ input, textarea, select {
   background: var(--accent);
   display: inline-block;
 }
+#topbar-extra {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+#chrome-toggle-btn { display: none; } /* only relevant below the mobile breakpoint, see media query */
+
+/* Below this width, the drawer toggles / presenter mode / language·theme·font
+   selects take enough space (often wrapping to 2-3 rows) that there's not
+   much screen left for actual content. Hide that whole group by default and
+   let a small toggle reveal it on demand — the tab bar and content always
+   stay visible either way. */
+@media (max-width: 700px) {
+  #topbar-extra { display: none; }
+  #topbar-extra.chrome-visible { display: flex; }
+  #chrome-toggle-btn { display: inline-flex; }
+}
 .conn-badge {
   font-size: 0.8rem;
   padding: 0.2rem 0.6rem;
@@ -377,6 +395,7 @@ h2 { margin: 0 0 1rem; }
 .blanks-text {
   font-size: 1.05rem;
   line-height: 2.4;
+  white-space: pre-line;
 }
 .blank-slot {
   display: inline-flex;
@@ -680,6 +699,7 @@ footer.appfoot {
 #qna-form { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
 #qna-form input { flex: 1; }
 .qna-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.qna-item { display: flex; flex-direction: column; }
 .qna-row {
   display: flex;
   align-items: center;
@@ -691,6 +711,15 @@ footer.appfoot {
 }
 .qna-row.answered { opacity: 0.55; }
 .qna-row.answered .qna-text { text-decoration: line-through; }
+.qna-answer {
+  margin: 0.35rem 0 0 1.2rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 0.9rem;
+}
+.qna-answer strong { color: var(--accent); }
 .qna-text { flex: 1; }
 .qna-approval-badge {
   font-size: 0.9rem;

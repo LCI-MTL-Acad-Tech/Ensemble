@@ -216,10 +216,16 @@ def cmd_qna(url, args):
             approval = q.get("approval")
             approval_mark = "★" if approval == "approved" else ("🛑" if approval == "disapproved" else " ")
             print(f"  [{answered_mark}][{approval_mark}] 👍{up} 👎{down}  {q['text']}   (id: {qid})")
+            if q.get("answer_text"):
+                print(f"        ↳ {q['answer_text']}")
         print("  ([answered] [★ approved / 🛑 disapproved] — instructor-only, separate from the room's 👍/👎)")
     elif args.action == "answer":
         call(url, "POST", "/api/admin/qna/answer", {"question_id": args.id, "answered": not args.unanswer})
         print("Updated.")
+    elif args.action == "reply":
+        text = " ".join(args.text)
+        call(url, "POST", "/api/admin/qna/answer_text", {"question_id": args.id, "text": text})
+        print("Reply posted — visible to everyone under that question, and it's now marked answered.")
     elif args.action == "approve":
         call(url, "POST", "/api/admin/qna/approval", {"question_id": args.id, "value": "approved"})
         print("Toggled ★ approved.")
@@ -586,6 +592,8 @@ def build_parser() -> argparse.ArgumentParser:
     qna_sub = qna.add_subparsers(dest="action", required=True)
     qna_sub.add_parser("list")
     s = qna_sub.add_parser("answer"); s.add_argument("id"); s.add_argument("--unanswer", action="store_true")
+    s = qna_sub.add_parser("reply", help="Post a typed reply, visible to everyone under that question; also marks it answered.")
+    s.add_argument("id"); s.add_argument("text", nargs="+", help="The reply text (wrap in quotes, or it's joined from multiple words)")
     s = qna_sub.add_parser("approve", help="Toggle ★ approved (instructor-only; clicking again clears it).")
     s.add_argument("id")
     s = qna_sub.add_parser("disapprove", help="Toggle 🛑 disapproved (instructor-only; clicking again clears it).")

@@ -514,10 +514,23 @@ class Session:
         q = {
             "id": qid, "text": text, "reactions": {},  # client_id -> "up"|"down"
             "answered": False, "approval": None,  # None | "approved" | "disapproved"
+            "answer_text": "",  # instructor's typed reply, if any
             "ts": time.time(),
         }
         self.state["qna"]["questions"][qid] = q
         return q
+
+    def set_qna_answer_text(self, question_id: str, text: str) -> bool:
+        """Instructor's typed reply. Setting non-empty text also marks the
+        question answered — typing a reply and it not counting as
+        "answered" would be a strange, easy-to-miss inconsistency."""
+        q = self.state["qna"]["questions"].get(question_id)
+        if not q:
+            return False
+        q["answer_text"] = text.strip()[:1000]
+        if q["answer_text"]:
+            q["answered"] = True
+        return True
 
     def react_to_qna_question(self, question_id: str, client_id: str, reaction: str) -> bool:
         q = self.state["qna"]["questions"].get(question_id)

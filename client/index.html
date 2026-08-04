@@ -28,41 +28,44 @@
 <header id="topbar">
   <div class="app-title"><span class="dot"></span><span data-i18n="app_name">Classroom Live</span></div>
   <span class="conn-badge" id="conn-badge" data-state="connecting" data-i18n="connection_connecting">Connecting…</span>
+  <button id="chrome-toggle-btn" title="Show/hide menu">☰</button>
 
-  <button class="drawer-toggle" id="toggle-chat-drawer" data-target="chat" title="Chat">
-    💬<span class="pin-badge" hidden>📌</span>
-  </button>
-  <button class="drawer-toggle" id="toggle-traffic-drawer" data-target="traffic" title="Status">
-    🚦<span class="pin-badge" hidden>📌</span>
-  </button>
-  <button class="drawer-toggle" id="toggle-qna-drawer" data-target="qna" title="Q&amp;A">
-    ❓<span class="pin-badge" hidden>📌</span>
-  </button>
-  <button class="drawer-toggle" id="toggle-timer-drawer" data-target="timer" title="Timer">
-    ⏱<span class="pin-badge" hidden>📌</span>
-  </button>
-  <button class="drawer-toggle" id="toggle-qr-drawer" data-target="qr" title="Join by QR code">
-    📱
-  </button>
+  <div id="topbar-extra">
+    <button class="drawer-toggle" id="toggle-chat-drawer" data-target="chat" title="Chat">
+      💬<span class="pin-badge" hidden>📌</span>
+    </button>
+    <button class="drawer-toggle" id="toggle-traffic-drawer" data-target="traffic" title="Status">
+      🚦<span class="pin-badge" hidden>📌</span>
+    </button>
+    <button class="drawer-toggle" id="toggle-qna-drawer" data-target="qna" title="Q&amp;A">
+      ❓<span class="pin-badge" hidden>📌</span>
+    </button>
+    <button class="drawer-toggle" id="toggle-timer-drawer" data-target="timer" title="Timer">
+      ⏱<span class="pin-badge" hidden>📌</span>
+    </button>
+    <button class="drawer-toggle" id="toggle-qr-drawer" data-target="qr" title="Join by QR code">
+      📱
+    </button>
 
-  <button id="viewer-mode-toggle" title="Presenter mode — enlarges the UI and disables editing for a projector display" data-i18n="viewer_mode_off">👁 Viewer mode</button>
+    <button id="viewer-mode-toggle" title="Presenter mode — enlarges the UI and disables editing for a projector display" data-i18n="viewer_mode_off">👁 Viewer mode</button>
 
-  <select id="lang-select" title="Language">
-    <option value="en">English</option>
-    <option value="fr">Français</option>
-    <option value="es">Español</option>
-  </select>
+    <select id="lang-select" title="Language">
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+    </select>
 
-  <select id="theme-select" title="Theme">
-    <option value="light" data-i18n="settings_theme_light">Light</option>
-    <option value="dark" data-i18n="settings_theme_dark">Dark</option>
-  </select>
+    <select id="theme-select" title="Theme">
+      <option value="light" data-i18n="settings_theme_light">Light</option>
+      <option value="dark" data-i18n="settings_theme_dark">Dark</option>
+    </select>
 
-  <select id="font-select" title="Font">
-    <option value="default" data-i18n="settings_font_default">Default</option>
-    <option value="legible" data-i18n="settings_font_legible">Atkinson Hyperlegible</option>
-    <option value="dyslexic" data-i18n="settings_font_dyslexic">OpenDyslexic</option>
-  </select>
+    <select id="font-select" title="Font">
+      <option value="default" data-i18n="settings_font_default">Default</option>
+      <option value="legible" data-i18n="settings_font_legible">Atkinson Hyperlegible</option>
+      <option value="dyslexic" data-i18n="settings_font_dyslexic">OpenDyslexic</option>
+    </select>
+  </div>
 </header>
 
 <nav id="tabs">

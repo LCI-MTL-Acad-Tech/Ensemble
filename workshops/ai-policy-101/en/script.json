@@ -46,9 +46,16 @@
     },
     {
       "name": "0:40 — Redesign in groups: make the groups",
-      "say": "Same base assignment for everyone: 'Write a 500-word reflection connecting a course concept to a real-world example.' Find your group on this tab.",
+      "say": "Find your group on this tab — same base assignment for everyone, shown on the next screen.",
       "actions": [
         {"cmd": "groups_make", "mode": "size", "param": 4, "pin": true}
+      ]
+    },
+    {
+      "name": "0:40 (b) — Show the assignment",
+      "say": "Here's the assignment everyone's redesigning — it'll stay up on the Slide tab if you need to check it again.",
+      "actions": [
+        {"cmd": "slide_load", "file": "slide-assignment.json", "pin": true}
       ]
     },
     {

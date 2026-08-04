@@ -150,6 +150,7 @@
   "qna_submit": "Ask",
   "qna_empty": "No questions yet — be the first to ask.",
   "qna_answered_label": "Answered",
+  "qna_answer_label": "Answer:",
   "qna_approved_title": "Instructor-approved",
   "qna_disapproved_title": "Instructor-disapproved",
 

@@ -388,6 +388,15 @@ ready to save as a file and try as-is.
 - `answers` maps each blank id to its one correct piece of text.
 - `distractors` is a flat list of extra pieces that don't belong to any
   particular blank — exercise-wide, not tied to one slot.
+- `\n` in `text` renders as an actual line break — useful for a
+  matching-style exercise (one label + blank per line, see
+  `workshops/ai-policy-101/en/blanks-disciplines.json` for a real
+  example: `"Nursing:\n{{1}}\n\nComputer Science:\n{{2}}"` puts each
+  field on its own line with a blank line between them) rather than the
+  classic cloze-paragraph style where blanks sit inline in flowing prose
+  (like the example above, which is deliberately one flowing sentence).
+  Use whichever fits the exercise — a long list of short label/blank
+  pairs reads much better one-per-line than run together in a paragraph.
 - All pieces start shuffled in one shared pool. Any connected client can
   drag any piece into any blank or back out — no per-piece ownership.
 - Once a piece sits in a blank, everyone can react to it (👍 endorse /
@@ -535,13 +544,17 @@ These don't need a JSON template — they're driven entirely from
 `control.py`:
 
 - **Q&A** — nothing to load; the queue just starts empty and fills up as
-  people ask, reacted to with 👍/👎. Moderate with `python control.py qna
-  list` / `qna answer <id>` (toggle answered — it stays visible but grays
-  out and sinks to the bottom, so there's still a record of what was
-  asked) / `qna approve <id>` / `qna disapprove <id>` (★/🛑 curation
-  marks, instructor-only, independent of both "answered" and the room's
-  votes — running the same one twice clears it, running the other one
-  switches straight over) / `qna delete <id>` / `qna clear`. Anonymity is
+  people ask, reacted to with 👍/👎. See what's come in with `python
+  control.py qna list`, and moderate with `qna answer <id>` (toggle
+  answered — it stays visible but grays out and sinks to the bottom, so
+  there's still a record of what was asked) / `qna reply <id> <text>`
+  (posts a typed reply, shown to everyone in a highlighted block right
+  under the question — this also marks it answered, since a typed reply
+  sitting on an "unanswered" question would be a confusing inconsistency)
+  / `qna approve <id>` / `qna disapprove <id>` (★/🛑 curation marks,
+  instructor-only, independent of both "answered" and the room's votes —
+  running the same one twice clears it, running the other one switches
+  straight over) / `qna delete <id>` / `qna clear`. Anonymity is
   structural, not just a UI choice — the server never stores a name
   against a question or a reaction, so there's nothing to accidentally
   leak later.
@@ -731,6 +744,13 @@ add a new interaction type:
   both bundled locally as font files (no internet needed once installed;
   see **Licensing** below for their terms).
 - Light/dark mode, respecting the device's OS preference on first load.
+- On narrow screens (phones), the drawer toggles, Presenter mode button,
+  and language/theme/font selects collapse behind a ☰ button in the top
+  bar by default — that row alone can otherwise wrap to two or three
+  lines and eat most of a small screen, leaving little room for the tab
+  content underneath. Tap ☰ to reveal it when you actually need to change
+  a setting; the tab bar and content stay visible either way. On wider
+  screens this row is just always shown, no toggle needed.
 
 ## Licensing
 
