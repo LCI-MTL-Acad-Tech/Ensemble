@@ -2,16 +2,21 @@
 // (Dean of Technology and Design, Collège LaSalle Montréal) and Claude (Anthropic).
 // See index.html's footer for the full attribution note.
 // Order the steps: a shared, reorderable list. Anyone can drag any row to
-// a new position. Reactions (up = should be earlier, down = should be
-// later, check = this is right) attach to a row and reset whenever that
-// row's position shifts — including rows that got nudged out of the way
-// by someone else's drag, not just the one that moved. When every
-// connected client has checked every row, the exercise is "finished" and
-// the instructor can reveal the answer key to grade it.
+// a new position — the whole row is the drag target, not just the small
+// handle icon, since a tiny precise target is genuinely hard to grab on
+// both touch and mouse. While dragging, the row follows the pointer
+// continuously and other rows slide out of the way to preview the drop
+// slot; the actual reorder only commits once, on release, and that's the
+// only point a move is sent to the server. Reactions (up = should be
+// earlier, down = should be later, check = this is right) attach to a
+// row and reset whenever that row's position shifts — including rows
+// that got nudged out of the way by someone else's drag, not just the
+// one that moved. When every connected client has checked every row, the
+// exercise is "finished" and the instructor can reveal the answer key to
+// grade it.
 const OrderModule = (() => {
   let lastState = null;
   const lastSeenMovedAt = {}; // item_id -> last last_moved_at we rendered, to detect "just changed"
-  let dragEl = null;
 
   function escapeHtml(s) {
     const d = document.createElement("div");
@@ -53,7 +58,7 @@ const OrderModule = (() => {
     }
 
     row.innerHTML = `
-      <span class="order-handle" title="drag to reorder">⠿</span>
+      <span class="order-handle" title="Drag to reorder">⠿</span>
       <span class="order-index">${index + 1}</span>
       <span class="order-text">${escapeHtml(od.items[itemId])}</span>
       ${gradeBadge}
@@ -73,7 +78,10 @@ const OrderModule = (() => {
       });
     });
 
-    row.querySelector(".order-handle").addEventListener("pointerdown", (e) => startDrag(e, row));
+    // The whole row is the drag target (buttons opt out via stopPropagation
+    // above) — a tiny handle-only target is hard to hit precisely on touch
+    // and not much easier with a mouse.
+    row.addEventListener("pointerdown", (e) => startDrag(e, row));
     return row;
   }
 
@@ -81,45 +89,67 @@ const OrderModule = (() => {
     e.preventDefault();
     const list = row.parentElement;
     const itemId = row.dataset.itemId;
-    dragEl = row;
-    row.classList.add("dragging");
+    const rows = [...list.children];
+    const startIndex = rows.indexOf(row);
+    // Snapshot everyone's position before anything moves — the "which
+    // slot is the pointer over" test below always compares against these
+    // original positions, not the live (possibly already-shifted) DOM, so
+    // the drag doesn't fight itself as rows slide out of the way.
+    const startRects = rows.map((r) => r.getBoundingClientRect());
+    const rowHeight = startRects[startIndex].height;
     const startY = e.clientY;
 
-    function siblingsExcept() {
-      return [...list.children].filter((el) => el !== row);
+    row.classList.add("dragging");
+    row.style.zIndex = "5";
+    rows.forEach((r) => { r.style.transition = "transform 0.15s ease"; });
+
+    let targetIndex = startIndex;
+
+    function applyPreviewShift() {
+      // Visually slide every *other* row out of the way to preview the
+      // drop slot — nothing here touches the real DOM order yet.
+      rows.forEach((r, i) => {
+        if (r === row) return;
+        let shift = 0;
+        if (startIndex < targetIndex && i > startIndex && i <= targetIndex) shift = -rowHeight;
+        else if (startIndex > targetIndex && i < startIndex && i >= targetIndex) shift = rowHeight;
+        r.style.transform = shift ? `translateY(${shift}px)` : "";
+      });
     }
 
     function onMove(ev) {
       const dy = ev.clientY - startY;
-      row.style.transform = `translateY(${dy}px)`;
-      row.style.zIndex = "5";
+      row.style.transform = `translateY(${dy}px)`; // the dragged row itself follows the pointer continuously
 
-      // reorder DOM live so the list previews the drop position
-      const sibs = siblingsExcept();
-      const rowMidY = row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
-      let target = null;
-      for (const sib of sibs) {
-        const r = sib.getBoundingClientRect();
-        if (rowMidY < r.top + r.height / 2) { target = sib; break; }
+      const draggedCenter = startRects[startIndex].top + rowHeight / 2 + dy;
+      let newTarget = 0;
+      for (let i = 0; i < startRects.length; i++) {
+        if (draggedCenter > startRects[i].top + startRects[i].height / 2) newTarget = i;
       }
-      if (target) {
-        list.insertBefore(row, target);
-      } else {
-        list.appendChild(row);
+      if (newTarget !== targetIndex) {
+        targetIndex = newTarget;
+        applyPreviewShift();
       }
-      row.style.transform = "translateY(0px)"; // DOM move already accounts for position
     }
 
     function onUp() {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+
+      rows.forEach((r) => { r.style.transition = ""; r.style.transform = ""; });
       row.classList.remove("dragging");
-      row.style.transform = "";
       row.style.zIndex = "";
-      const finalIndex = [...list.children].indexOf(row);
-      dragEl = null;
+
+      // Commit the previewed slot as one real DOM move, matching what was
+      // already shown, then tell the server.
+      if (targetIndex !== startIndex) {
+        const ref = rows[targetIndex];
+        if (targetIndex > startIndex) ref.after(row);
+        else ref.before(row);
+      }
+
       WSHub.send({
-        type: "order_move_item", item_id: itemId, new_index: finalIndex,
+        type: "order_move_item", item_id: itemId, new_index: targetIndex,
         rev: lastState ? lastState.rev : undefined,
       });
     }

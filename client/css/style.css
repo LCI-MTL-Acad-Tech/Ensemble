@@ -467,10 +467,23 @@ h2 { margin: 0 0 1rem; }
   border-radius: var(--radius);
   padding: 0.5rem 0.7rem;
   transition: background 0.4s ease;
+  cursor: grab;
+  touch-action: none; /* the whole row is the drag target now, not just the handle */
+  user-select: none; /* dragging from the text shouldn't select it instead */
 }
-.order-row.dragging { box-shadow: var(--shadow); opacity: 0.9; }
+.order-row.dragging { box-shadow: var(--shadow); opacity: 0.95; cursor: grabbing; }
 .order-row.just-moved { background: var(--accent-soft); }
-.order-handle { cursor: grab; color: var(--ink-soft); touch-action: none; font-size: 1.1rem; }
+.order-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  font-size: 1.3rem;
+  border-radius: var(--radius);
+}
 .order-index {
   width: 1.6rem; height: 1.6rem;
   border-radius: 50%;
@@ -637,7 +650,7 @@ body.viewer-mode .drawer-body select {
 body.viewer-mode #whiteboard-canvas,
 body.viewer-mode .postit,
 body.viewer-mode .piece,
-body.viewer-mode .order-handle {
+body.viewer-mode .order-row {
   pointer-events: none;
 }
 body.viewer-mode .postit { opacity: 0.85; }

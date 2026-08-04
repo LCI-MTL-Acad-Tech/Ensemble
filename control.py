@@ -449,6 +449,14 @@ def _run_step(url: str, step: dict, base_dir: Path, index: int, total: int) -> N
             print(f"    !! {e}", file=sys.stderr)
 
 
+def _peek_line(steps: list[dict], index: int) -> str:
+    """One-line preview of the step after `index` — never executes anything."""
+    nxt = index + 1
+    if nxt >= len(steps):
+        return "  (this is the last step)"
+    return f"  Up next: [{nxt + 1}/{len(steps)}] {steps[nxt]['name']}"
+
+
 def run_script(url: str, path: str) -> None:
     script_path = Path(path)
     data = load_json_file(path)
@@ -461,10 +469,11 @@ def run_script(url: str, path: str) -> None:
 
     print(f"\nScript: {data.get('title', path)} — {len(steps)} steps.")
     _run_step(url, steps[current], base_dir, current, len(steps))
+    print(_peek_line(steps, current))
 
     while True:
         try:
-            raw = input("\n[Enter]=next  b=back  r=repeat  g N=goto  l=list  q=quit > ").strip().lower()
+            raw = input("\n[Enter]=next  b=back  r=repeat  p[N]=peek  g N=goto  l=list  q=quit > ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print()
             return
@@ -475,6 +484,25 @@ def run_script(url: str, path: str) -> None:
             for i, s in enumerate(steps):
                 marker = "->" if i == current else "  "
                 print(f"  {marker} {i + 1}. {s['name']}")
+            continue
+        if raw == "p" or raw.startswith("p "):
+            # Peek at a step's name/talking point without executing anything
+            # or moving `current` — the whole point is being able to see
+            # what's coming up without committing to it.
+            parts = raw.split()
+            if len(parts) == 2 and parts[1].isdigit() and 1 <= int(parts[1]) <= len(steps):
+                idx = int(parts[1]) - 1
+            else:
+                idx = current + 1
+            if idx >= len(steps):
+                print("  (no such step — that's past the end)")
+            else:
+                s = steps[idx]
+                print(f"  Peek [{idx + 1}/{len(steps)}] {s['name']}")
+                if s.get("say"):
+                    print(f'    Say: "{s["say"]}"')
+                print("  (not executed — nothing changed, still on step "
+                      f"{current + 1})")
             continue
         if raw in ("r", "repeat"):
             pass  # re-run the current step as-is
@@ -494,6 +522,7 @@ def run_script(url: str, path: str) -> None:
             current += 1
 
         _run_step(url, steps[current], base_dir, current, len(steps))
+        print(_peek_line(steps, current))
 
 
 def cmd_script(url, args):

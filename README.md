@@ -37,7 +37,10 @@ below):
   reactions and a completion vote included.
 - **Order the steps** — a shared, reorderable list (also works as
   "rank most to least important"); up/down/check reactions, a
-  reveal-and-grade step.
+  reveal-and-grade step. Drag anywhere on a row, not just a small handle —
+  it follows your finger/cursor continuously and other rows slide out of
+  the way to preview where it'll land, with the actual reorder committed
+  only once you let go.
 - **Self-assessment radar** — sliders per axis, live spider chart showing
   the room's spread (min–max band, interquartile band, median) with your
   own ratings drawn as a bold outline on top.
@@ -295,9 +298,13 @@ Each step shows its name and talking point, fires its actions (loading and
 pinning things) immediately, then waits for you: **Enter** to advance,
 **b** to go back a step (safe — it just re-runs that step's actions, which
 re-pins/re-loads whatever it was showing, so an accidental double-`next`
-is easy to recover from), **r** to redo the current step, **g N** to jump
-straight to step N, **l** to list all steps, **q** to quit the stepper
-(the live session keeps running). A script is:
+is easy to recover from), **r** to redo the current step, **p** to peek at
+the next step's name and talking point *without* executing anything or
+moving on (or **p N** to peek further ahead) — a one-line "Up next: ..."
+hint is also shown automatically after every step, so you always know
+what's coming without needing to ask, **g N** to jump straight to step N,
+**l** to list all steps, **q** to quit the stepper (the live session
+keeps running). A script is:
 
 ```json
 {
