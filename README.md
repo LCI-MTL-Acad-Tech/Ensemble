@@ -302,9 +302,11 @@ is easy to recover from), **r** to redo the current step, **p** to peek at
 the next step's name and talking point *without* executing anything or
 moving on (or **p N** to peek further ahead) — a one-line "Up next: ..."
 hint is also shown automatically after every step, so you always know
-what's coming without needing to ask, **g N** to jump straight to step N,
-**l** to list all steps, **q** to quit the stepper (the live session
-keeps running). A script is:
+what's coming without needing to ask, **a** to drop into a live Q&A view
+right from wherever you are (see below — **b** from inside it returns to
+the exact step you were on, nothing advances), **g N** to jump straight
+to step N, **l** to list all steps, **q** to quit the stepper (the live
+session keeps running). A script is:
 
 ```json
 {
@@ -558,6 +560,16 @@ These don't need a JSON template — they're driven entirely from
   structural, not just a UI choice — the server never stores a name
   against a question or a reaction, so there's nothing to accidentally
   leak later.
+- **Live Q&A view**: `python control.py qna watch` opens a view that
+  updates itself the instant a new question comes in — no re-running
+  `qna list` to check — and lets you act on it right there: type an
+  id-prefix (the first few characters shown next to each question — no
+  need for the full id) followed by reply text to answer it, `a`/`d`/`x`
+  plus an id-prefix to approve/disapprove/delete, or `b` to leave. Inside
+  `script run`, this is the same view: press **a** at any step to slip
+  into it and **b** to come straight back to that exact step, and it
+  opens automatically the moment a step pins the Q&A tab for the room
+  (no need to remember to check).
 - **Groups** — `python control.py groups make --mode size --param 4` for
   groups targeting 4 people each, or `--mode count --param 3` for exactly
   3 groups sized as evenly as possible. With `--mode size`, if the

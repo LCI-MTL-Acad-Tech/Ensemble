@@ -18,6 +18,3 @@ venv/
 # OS cruft
 .DS_Store
 Thumbs.db
-
-# emacs backups
-*~ 

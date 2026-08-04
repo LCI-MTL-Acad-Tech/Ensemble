@@ -320,8 +320,19 @@ python control.py pin qna
 you didn't want to say out loud. I'll keep it open after we leave the room
 and follow up on anything I can't answer right now."
 
+If you're running this via `python control.py script run ...`, this step
+pins the Q&A tab and automatically drops you into a live view — questions
+appear the instant they're submitted, and you can type an id-prefix plus
+reply text to answer one on the spot, right there in the terminal, without
+switching windows. Press **b** to step back out to the script when you're
+ready to wrap up (or **a** at any earlier point in the script if you want
+to check in on questions before the very end — you don't have to wait
+until this step). Running `qna list`/`qna watch` standalone works the
+same way outside the script, e.g. to keep following up after the session:
+
 ```bash
-python control.py qna list          # check back on this after the session
+python control.py qna watch          # live view, updates itself
+python control.py qna list           # one-off snapshot instead
 ```
 
 ---

@@ -27,6 +27,7 @@ remember exact subcommand syntax:
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
 import sys
 import time
@@ -197,7 +198,89 @@ def cmd_spider(url, args):
         print("Responses reset.")
 
 
+def _qna_render(questions: dict) -> None:
+    print("\n--- Live Q&A --- (id-prefix + reply text to answer  |  a/d/x id-prefix = approve/disapprove/delete  |  b = back)")
+    if not questions:
+        print("  (no questions yet)")
+        return
+    for qid, q in sorted(questions.items(), key=lambda kv: (kv[1]["answered"], kv[1]["ts"])):
+        up = sum(1 for r in q["reactions"].values() if r == "up")
+        down = sum(1 for r in q["reactions"].values() if r == "down")
+        mark = "✓" if q["answered"] else " "
+        approval = q.get("approval")
+        amark = "★" if approval == "approved" else ("🛑" if approval == "disapproved" else " ")
+        print(f"  [{mark}][{amark}] 👍{up} 👎{down}  {qid[:8]}  {q['text']}")
+        if q.get("answer_text"):
+            print(f"          ↳ {q['answer_text']}")
+
+
+async def _qna_watch_async(url: str) -> None:
+    import websockets
+
+    ws_url = url.replace("http://", "ws://").replace("https://", "wss://").rstrip("/") + "/ws"
+    questions: dict = {}
+
+    async with websockets.connect(ws_url) as ws:
+        async def receiver():
+            async for raw in ws:
+                msg = json.loads(raw)
+                if msg.get("type") == "session_state":
+                    questions.clear()
+                    questions.update(msg["state"]["qna"]["questions"])
+                    _qna_render(questions)
+                elif msg.get("type") == "qna_update":
+                    questions.clear()
+                    questions.update(msg["qna"]["questions"])
+                    _qna_render(questions)
+
+        recv_task = asyncio.create_task(receiver())
+        try:
+            while True:
+                line = (await asyncio.to_thread(input, "\nqna> ")).strip()
+                if not line or line in ("b", "back", "q", "quit"):
+                    return
+                parts = line.split(maxsplit=1)
+                cmd0 = parts[0]
+
+                if cmd0 in ("a", "d", "x") and len(parts) == 2:
+                    match = next((qid for qid in questions if qid.startswith(parts[1])), None)
+                    if not match:
+                        print("  no question with that id prefix")
+                        continue
+                    if cmd0 == "a":
+                        call(url, "POST", "/api/admin/qna/approval", {"question_id": match, "value": "approved"})
+                    elif cmd0 == "d":
+                        call(url, "POST", "/api/admin/qna/approval", {"question_id": match, "value": "disapproved"})
+                    else:
+                        call(url, "POST", "/api/admin/qna/delete", {"question_id": match})
+                    continue
+
+                if len(parts) == 2:
+                    match = next((qid for qid in questions if qid.startswith(parts[0])), None)
+                    if match:
+                        call(url, "POST", "/api/admin/qna/answer_text", {"question_id": match, "text": parts[1]})
+                        continue
+
+                print("  usage: <id-prefix> <reply text>  |  a/d/x <id-prefix>  |  b to go back")
+        finally:
+            recv_task.cancel()
+            try:
+                await recv_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
+
+def qna_watch(url: str) -> None:
+    try:
+        asyncio.run(_qna_watch_async(url))
+    except (KeyboardInterrupt, EOFError):
+        print()
+
+
 def cmd_qna(url, args):
+    if args.action == "watch":
+        qna_watch(url)
+        return
     if args.action == "list":
         questions = call(url, "GET", "/api/session")["state"]["qna"]["questions"]
         if not questions:
@@ -463,6 +546,10 @@ def _peek_line(steps: list[dict], index: int) -> str:
     return f"  Up next: [{nxt + 1}/{len(steps)}] {steps[nxt]['name']}"
 
 
+def _step_pins_qna(step: dict) -> bool:
+    return any(a.get("cmd") == "pin" and a.get("target") == "qna" for a in step.get("actions", []))
+
+
 def run_script(url: str, path: str) -> None:
     script_path = Path(path)
     data = load_json_file(path)
@@ -476,16 +563,24 @@ def run_script(url: str, path: str) -> None:
     print(f"\nScript: {data.get('title', path)} — {len(steps)} steps.")
     _run_step(url, steps[current], base_dir, current, len(steps))
     print(_peek_line(steps, current))
+    if _step_pins_qna(steps[current]):
+        print("  (this step opens Q&A for the room — dropping into live Q&A now; 'b' to return here)")
+        qna_watch(url)
 
     while True:
         try:
-            raw = input("\n[Enter]=next  b=back  r=repeat  p[N]=peek  g N=goto  l=list  q=quit > ").strip().lower()
+            raw = input("\n[Enter]=next  b=back  r=repeat  p[N]=peek  a=Q&A  g N=goto  l=list  q=quit > ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print()
             return
 
         if raw in ("q", "quit"):
             return
+        if raw in ("a", "qna"):
+            # Slip into live Q&A from wherever you are in the script, at
+            # any point — doesn't touch `current` or re-run anything.
+            qna_watch(url)
+            continue
         if raw in ("l", "list"):
             for i, s in enumerate(steps):
                 marker = "->" if i == current else "  "
@@ -529,6 +624,9 @@ def run_script(url: str, path: str) -> None:
 
         _run_step(url, steps[current], base_dir, current, len(steps))
         print(_peek_line(steps, current))
+        if _step_pins_qna(steps[current]):
+            print("  (this step opens Q&A for the room — dropping into live Q&A now; 'b' to return here)")
+            qna_watch(url)
 
 
 def cmd_script(url, args):
@@ -591,6 +689,7 @@ def build_parser() -> argparse.ArgumentParser:
     qna = sub.add_parser("qna", help="Moderate the anonymous Q&A queue.")
     qna_sub = qna.add_subparsers(dest="action", required=True)
     qna_sub.add_parser("list")
+    qna_sub.add_parser("watch", help="Live-updating Q&A view — reply/approve/disapprove/delete without leaving the terminal.")
     s = qna_sub.add_parser("answer"); s.add_argument("id"); s.add_argument("--unanswer", action="store_true")
     s = qna_sub.add_parser("reply", help="Post a typed reply, visible to everyone under that question; also marks it answered.")
     s.add_argument("id"); s.add_argument("text", nargs="+", help="The reply text (wrap in quotes, or it's joined from multiple words)")
