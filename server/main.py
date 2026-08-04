@@ -331,7 +331,12 @@ async def handle_message(client_id: str, msg: dict) -> None:
             await manager.broadcast({"type": "order_update", "ordering": live.state["ordering"]})
 
     elif mtype == "qna_submit":
-        text = str(msg.get("text", ""))
+        text = str(msg.get("text", "")).strip()[:500]
+        if not text:
+            return
+        if moderation_list.contains_blocked_word(text):
+            await manager.send_to(client_id, {"type": "qna_blocked"})
+            return
         q = live.add_qna_question(text)
         if q:
             await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
@@ -340,6 +345,27 @@ async def handle_message(client_id: str, msg: dict) -> None:
         question_id = str(msg.get("question_id", ""))
         reaction = msg.get("reaction")
         if live.react_to_qna_question(question_id, client_id, reaction):
+            await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+
+    elif mtype == "qna_reply_submit":
+        name = manager.names.get(client_id, "Anonymous")
+        question_id = str(msg.get("question_id", ""))
+        text = str(msg.get("text", "")).strip()[:500]
+        anonymous = bool(msg.get("anonymous"))
+        if not text:
+            return
+        if moderation_list.contains_blocked_word(text):
+            await manager.send_to(client_id, {"type": "qna_blocked"})
+            return
+        reply = live.add_qna_reply(question_id, client_id, name, text, anonymous, from_instructor=False)
+        if reply:
+            await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+
+    elif mtype == "qna_reply_react":
+        question_id = str(msg.get("question_id", ""))
+        reply_id = str(msg.get("reply_id", ""))
+        reaction = msg.get("reaction")
+        if live.react_to_qna_reply(question_id, reply_id, client_id, reaction):
             await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
 
 
@@ -422,9 +448,20 @@ class QnaApprovalRequest(BaseModel):
     value: str  # "approved" or "disapproved"
 
 
-class QnaAnswerTextRequest(BaseModel):
+class QnaReplyRequest(BaseModel):
     question_id: str
     text: str
+
+
+class QnaReplyDecisionRequest(BaseModel):
+    question_id: str
+    reply_id: str
+    value: str  # "accepted" or "rejected"
+
+
+class QnaReplyDeleteRequest(BaseModel):
+    question_id: str
+    reply_id: str
 
 
 class QnaDeleteRequest(BaseModel):
@@ -647,9 +684,23 @@ async def api_qna_approval(req: QnaApprovalRequest):
     return {"ok": True}
 
 
-@app.post("/api/admin/qna/answer_text")
-async def api_qna_answer_text(req: QnaAnswerTextRequest):
-    live.set_qna_answer_text(req.question_id, req.text)
+@app.post("/api/admin/qna/reply")
+async def api_qna_reply(req: QnaReplyRequest):
+    live.add_qna_reply(req.question_id, None, "Instructor", req.text, anonymous=False, from_instructor=True)
+    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    return {"ok": True}
+
+
+@app.post("/api/admin/qna/reply_decision")
+async def api_qna_reply_decision(req: QnaReplyDecisionRequest):
+    live.set_qna_reply_decision(req.question_id, req.reply_id, req.value)
+    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    return {"ok": True}
+
+
+@app.post("/api/admin/qna/reply_delete")
+async def api_qna_reply_delete(req: QnaReplyDeleteRequest):
+    live.delete_qna_reply(req.question_id, req.reply_id)
     await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
     return {"ok": True}
 

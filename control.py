@@ -199,7 +199,11 @@ def cmd_spider(url, args):
 
 
 def _qna_render(questions: dict) -> None:
-    print("\n--- Live Q&A --- (id-prefix + reply text to answer  |  a/d/x id-prefix = approve/disapprove/delete  |  b = back)")
+    print("\n--- Live Q&A ---")
+    print("  <q-prefix> <text>       = post an instructor reply")
+    print("  a/d/x <q-prefix>        = approve/disapprove/delete the QUESTION")
+    print("  ra/rr/rx <reply-prefix> = accept/reject/delete a REPLY")
+    print("  b                       = back")
     if not questions:
         print("  (no questions yet)")
         return
@@ -210,8 +214,30 @@ def _qna_render(questions: dict) -> None:
         approval = q.get("approval")
         amark = "★" if approval == "approved" else ("🛑" if approval == "disapproved" else " ")
         print(f"  [{mark}][{amark}] 👍{up} 👎{down}  {qid[:8]}  {q['text']}")
-        if q.get("answer_text"):
-            print(f"          ↳ {q['answer_text']}")
+        for r in q.get("replies", []):
+            rup = sum(1 for v in r["reactions"].values() if v == "up")
+            rdown = sum(1 for v in r["reactions"].values() if v == "down")
+            decision = r.get("decision")
+            dmark = "✓accepted" if decision == "accepted" else ("✗rejected" if decision == "rejected" else "")
+            who = "Instructor" if r.get("from_instructor") else (r.get("author_name") or "Anonymous")
+            tag = f" [{dmark}]" if dmark else ""
+            print(f"          ↳ {r['id'][:8]}  ({who}) 👍{rup} 👎{rdown}{tag}  {r['text']}")
+
+
+def _find_by_prefix(ids, prefix):
+    return next((i for i in ids if i.startswith(prefix)), None)
+
+
+def _find_reply(questions: dict, prefix: str):
+    """Search every reply of every question for one whose id starts with
+    `prefix` — replies aren't nested under a question in the command
+    language, since typing two ids for one action would be tedious and
+    the prefixes are already short and distinctive enough on their own."""
+    for qid, q in questions.items():
+        for r in q.get("replies", []):
+            if r["id"].startswith(prefix):
+                return qid, r
+    return None, None
 
 
 async def _qna_watch_async(url: str) -> None:
@@ -243,7 +269,7 @@ async def _qna_watch_async(url: str) -> None:
                 cmd0 = parts[0]
 
                 if cmd0 in ("a", "d", "x") and len(parts) == 2:
-                    match = next((qid for qid in questions if qid.startswith(parts[1])), None)
+                    match = _find_by_prefix(questions, parts[1])
                     if not match:
                         print("  no question with that id prefix")
                         continue
@@ -255,13 +281,26 @@ async def _qna_watch_async(url: str) -> None:
                         call(url, "POST", "/api/admin/qna/delete", {"question_id": match})
                     continue
 
+                if cmd0 in ("ra", "rr", "rx") and len(parts) == 2:
+                    qid, reply = _find_reply(questions, parts[1])
+                    if not reply:
+                        print("  no reply with that id prefix")
+                        continue
+                    if cmd0 == "ra":
+                        call(url, "POST", "/api/admin/qna/reply_decision", {"question_id": qid, "reply_id": reply["id"], "value": "accepted"})
+                    elif cmd0 == "rr":
+                        call(url, "POST", "/api/admin/qna/reply_decision", {"question_id": qid, "reply_id": reply["id"], "value": "rejected"})
+                    else:
+                        call(url, "POST", "/api/admin/qna/reply_delete", {"question_id": qid, "reply_id": reply["id"]})
+                    continue
+
                 if len(parts) == 2:
-                    match = next((qid for qid in questions if qid.startswith(parts[0])), None)
+                    match = _find_by_prefix(questions, parts[0])
                     if match:
-                        call(url, "POST", "/api/admin/qna/answer_text", {"question_id": match, "text": parts[1]})
+                        call(url, "POST", "/api/admin/qna/reply", {"question_id": match, "text": parts[1]})
                         continue
 
-                print("  usage: <id-prefix> <reply text>  |  a/d/x <id-prefix>  |  b to go back")
+                print("  usage: <q-prefix> <reply text>  |  a/d/x <q-prefix>  |  ra/rr/rx <reply-prefix>  |  b to go back")
         finally:
             recv_task.cancel()
             try:
@@ -299,16 +338,30 @@ def cmd_qna(url, args):
             approval = q.get("approval")
             approval_mark = "★" if approval == "approved" else ("🛑" if approval == "disapproved" else " ")
             print(f"  [{answered_mark}][{approval_mark}] 👍{up} 👎{down}  {q['text']}   (id: {qid})")
-            if q.get("answer_text"):
-                print(f"        ↳ {q['answer_text']}")
+            for r in q.get("replies", []):
+                rup = sum(1 for v in r["reactions"].values() if v == "up")
+                rdown = sum(1 for v in r["reactions"].values() if v == "down")
+                decision = r.get("decision")
+                dmark = " [accepted]" if decision == "accepted" else (" [rejected]" if decision == "rejected" else "")
+                who = "Instructor" if r.get("from_instructor") else (r.get("author_name") or "Anonymous")
+                print(f"        ↳ ({who}) 👍{rup} 👎{rdown}{dmark}  {r['text']}   (reply id: {r['id']})")
         print("  ([answered] [★ approved / 🛑 disapproved] — instructor-only, separate from the room's 👍/👎)")
     elif args.action == "answer":
         call(url, "POST", "/api/admin/qna/answer", {"question_id": args.id, "answered": not args.unanswer})
         print("Updated.")
     elif args.action == "reply":
         text = " ".join(args.text)
-        call(url, "POST", "/api/admin/qna/answer_text", {"question_id": args.id, "text": text})
-        print("Reply posted — visible to everyone under that question, and it's now marked answered.")
+        call(url, "POST", "/api/admin/qna/reply", {"question_id": args.id, "text": text})
+        print("Reply posted as Instructor — visible to everyone under that question, and it's now marked answered.")
+    elif args.action == "reply-accept":
+        call(url, "POST", "/api/admin/qna/reply_decision", {"question_id": args.id, "reply_id": args.reply_id, "value": "accepted"})
+        print("Toggled accepted on that reply.")
+    elif args.action == "reply-reject":
+        call(url, "POST", "/api/admin/qna/reply_decision", {"question_id": args.id, "reply_id": args.reply_id, "value": "rejected"})
+        print("Toggled rejected on that reply.")
+    elif args.action == "reply-delete":
+        call(url, "POST", "/api/admin/qna/reply_delete", {"question_id": args.id, "reply_id": args.reply_id})
+        print("Reply deleted.")
     elif args.action == "approve":
         call(url, "POST", "/api/admin/qna/approval", {"question_id": args.id, "value": "approved"})
         print("Toggled ★ approved.")
@@ -693,6 +746,12 @@ def build_parser() -> argparse.ArgumentParser:
     s = qna_sub.add_parser("answer"); s.add_argument("id"); s.add_argument("--unanswer", action="store_true")
     s = qna_sub.add_parser("reply", help="Post a typed reply, visible to everyone under that question; also marks it answered.")
     s.add_argument("id"); s.add_argument("text", nargs="+", help="The reply text (wrap in quotes, or it's joined from multiple words)")
+    s = qna_sub.add_parser("reply-accept", help="Toggle accepted on one reply (instructor-only; full ids — use 'qna watch' for prefix matching).")
+    s.add_argument("id", help="question id"); s.add_argument("reply_id")
+    s = qna_sub.add_parser("reply-reject", help="Toggle rejected on one reply (instructor-only; full ids — use 'qna watch' for prefix matching).")
+    s.add_argument("id", help="question id"); s.add_argument("reply_id")
+    s = qna_sub.add_parser("reply-delete", help="Delete one reply (full ids — use 'qna watch' for prefix matching).")
+    s.add_argument("id", help="question id"); s.add_argument("reply_id")
     s = qna_sub.add_parser("approve", help="Toggle ★ approved (instructor-only; clicking again clears it).")
     s.add_argument("id")
     s = qna_sub.add_parser("disapprove", help="Toggle 🛑 disapproved (instructor-only; clicking again clears it).")

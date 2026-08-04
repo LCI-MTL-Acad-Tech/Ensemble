@@ -545,31 +545,41 @@ problem from one where people are unsure but split.
 These don't need a JSON template — they're driven entirely from
 `control.py`:
 
-- **Q&A** — nothing to load; the queue just starts empty and fills up as
-  people ask, reacted to with 👍/👎. See what's come in with `python
-  control.py qna list`, and moderate with `qna answer <id>` (toggle
-  answered — it stays visible but grays out and sinks to the bottom, so
-  there's still a record of what was asked) / `qna reply <id> <text>`
-  (posts a typed reply, shown to everyone in a highlighted block right
-  under the question — this also marks it answered, since a typed reply
-  sitting on an "unanswered" question would be a confusing inconsistency)
-  / `qna approve <id>` / `qna disapprove <id>` (★/🛑 curation marks,
-  instructor-only, independent of both "answered" and the room's votes —
-  running the same one twice clears it, running the other one switches
-  straight over) / `qna delete <id>` / `qna clear`. Anonymity is
-  structural, not just a UI choice — the server never stores a name
-  against a question or a reaction, so there's nothing to accidentally
-  leak later.
+- **Q&A** — questions are anonymous: nothing to load, the queue starts
+  empty and fills up as people ask, reacted to with 👍/👎 that just
+  affect sort order (unanswered-first, then by votes) — the server never
+  stores who asked or who reacted. **Replies are different**: anyone —
+  another participant or the instructor — can reply to a question, and
+  replies are attributed by name by default, with a per-reply "reply
+  anonymously" checkbox for anyone who'd rather not have their name on a
+  given answer. Each reply gets its own 👍/👎 from everyone (independent
+  of the question's own votes), and its own instructor accept/reject call
+  (shown as a ✓ Accepted / ✗ Rejected badge — accepted replies float to
+  the top, rejected ones sink to the bottom but stay visible rather than
+  being deleted). Both question and reply text pass through the same
+  chat moderation word list (see below).
+  - From `control.py`: `qna list` (see everything, replies nested under
+    each question) / `qna answer <id>` (toggle answered manually) /
+    `qna reply <id> <text>` (post a reply as "Instructor" — always
+    attributed, never anonymous, since this is a controller action not a
+    participant one; also marks the question answered, the same as
+    accepting any reply does) / `qna reply-accept <id> <reply_id>` /
+    `qna reply-reject <id> <reply_id>` (full ids; `qna watch` below is
+    the easier way to do this) / `qna approve <id>` / `qna disapprove
+    <id>` (★/🛑 on the *question* — a separate curation signal from any
+    reply's accept/reject) / `qna delete <id>` / `qna clear`.
 - **Live Q&A view**: `python control.py qna watch` opens a view that
-  updates itself the instant a new question comes in — no re-running
-  `qna list` to check — and lets you act on it right there: type an
-  id-prefix (the first few characters shown next to each question — no
-  need for the full id) followed by reply text to answer it, `a`/`d`/`x`
-  plus an id-prefix to approve/disapprove/delete, or `b` to leave. Inside
-  `script run`, this is the same view: press **a** at any step to slip
-  into it and **b** to come straight back to that exact step, and it
-  opens automatically the moment a step pins the Q&A tab for the room
-  (no need to remember to check).
+  updates itself the instant a new question or reply comes in — no
+  re-running `qna list` to check — and lets you act on it right there
+  with short id-prefixes instead of full ids: `<q-prefix> <text>` posts
+  an instructor reply, `a`/`d`/`x <q-prefix>` approves/disapproves/
+  deletes a question, `ra`/`rr`/`rx <reply-prefix>` accepts/rejects/
+  deletes one specific reply (searched across every question, so there's
+  only ever one id to type), `b` to leave. Inside `script run`, this is
+  the same view: press **a** at any step to slip into it and **b** to
+  come straight back to that exact step, and it opens automatically the
+  moment a step pins the Q&A tab for the room (no need to remember to
+  check).
 - **Groups** — `python control.py groups make --mode size --param 4` for
   groups targeting 4 people each, or `--mode count --param 3` for exactly
   3 groups sized as evenly as possible. With `--mode size`, if the

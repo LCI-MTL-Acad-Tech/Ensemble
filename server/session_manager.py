@@ -500,11 +500,14 @@ class Session:
 
     # ---- anonymous Q&A queue ----
     #
-    # Two independent signals live on each question, deliberately kept
-    # separate: "reactions" (👍/👎) are for everyone, anonymous, and just
-    # affect sort order; "approval" (★ approved / 🛑 disapproved) is an
-    # instructor-only curation call, made from control.py, not something
-    # participants can set on each other's or their own questions.
+    # Three independent signals, deliberately kept separate:
+    # "reactions" (👍/👎 on the *question*) are for everyone, anonymous,
+    # and just affect the question's sort order; "approval" (★ approved /
+    # 🛑 disapproved on the *question*) is an instructor-only curation
+    # call about whether the question itself deserves attention; each
+    # *reply* to a question has its own 👍/👎 from participants plus its
+    # own instructor accept/reject "decision" — none of these four things
+    # affect each other directly.
 
     def add_qna_question(self, text: str) -> dict:
         text = text.strip()[:500]
@@ -514,23 +517,77 @@ class Session:
         q = {
             "id": qid, "text": text, "reactions": {},  # client_id -> "up"|"down"
             "answered": False, "approval": None,  # None | "approved" | "disapproved"
-            "answer_text": "",  # instructor's typed reply, if any
+            "replies": [],
             "ts": time.time(),
         }
         self.state["qna"]["questions"][qid] = q
         return q
 
-    def set_qna_answer_text(self, question_id: str, text: str) -> bool:
-        """Instructor's typed reply. Setting non-empty text also marks the
-        question answered — typing a reply and it not counting as
-        "answered" would be a strange, easy-to-miss inconsistency."""
+    def add_qna_reply(
+        self, question_id: str, client_id: str | None, name: str, text: str,
+        anonymous: bool, from_instructor: bool = False,
+    ) -> dict | None:
+        """A reply from a participant (attributed by name unless they
+        checked "reply anonymously") or the instructor (always shown as
+        "Instructor", never anonymous — control.py isn't a participant
+        connection). An instructor reply auto-marks the question
+        answered, the same way accepting any reply does; a plain peer
+        reply does not, since an unvetted peer answer showing up
+        shouldn't by itself signal the question is resolved."""
+        q = self.state["qna"]["questions"].get(question_id)
+        text = text.strip()[:500]
+        if not q or not text:
+            return None
+        reply = {
+            "id": str(uuid.uuid4()),
+            "text": text,
+            "author_client_id": client_id,
+            "author_name": None if (anonymous and not from_instructor) else ("Instructor" if from_instructor else name),
+            "from_instructor": from_instructor,
+            "reactions": {},  # client_id -> "up"|"down"
+            "decision": None,  # None | "accepted" | "rejected"
+            "ts": time.time(),
+        }
+        q.setdefault("replies", []).append(reply)
+        if from_instructor:
+            q["answered"] = True
+        return reply
+
+    def react_to_qna_reply(self, question_id: str, reply_id: str, client_id: str, reaction: str) -> bool:
+        q = self.state["qna"]["questions"].get(question_id)
+        if not q or reaction not in ("up", "down"):
+            return False
+        reply = next((r for r in q.get("replies", []) if r["id"] == reply_id), None)
+        if not reply:
+            return False
+        if reply["reactions"].get(client_id) == reaction:
+            del reply["reactions"][client_id]
+        else:
+            reply["reactions"][client_id] = reaction
+        return True
+
+    def set_qna_reply_decision(self, question_id: str, reply_id: str, value: str) -> bool:
+        """Instructor-only accept/reject on one specific reply — toggles
+        off if set to the same value again, like the question-level
+        approval. Accepting a reply also marks the question answered."""
+        q = self.state["qna"]["questions"].get(question_id)
+        if not q or value not in ("accepted", "rejected"):
+            return False
+        reply = next((r for r in q.get("replies", []) if r["id"] == reply_id), None)
+        if not reply:
+            return False
+        reply["decision"] = None if reply.get("decision") == value else value
+        if reply["decision"] == "accepted":
+            q["answered"] = True
+        return True
+
+    def delete_qna_reply(self, question_id: str, reply_id: str) -> bool:
         q = self.state["qna"]["questions"].get(question_id)
         if not q:
             return False
-        q["answer_text"] = text.strip()[:1000]
-        if q["answer_text"]:
-            q["answered"] = True
-        return True
+        before = len(q.get("replies", []))
+        q["replies"] = [r for r in q.get("replies", []) if r["id"] != reply_id]
+        return len(q["replies"]) != before
 
     def react_to_qna_question(self, question_id: str, client_id: str, reaction: str) -> bool:
         q = self.state["qna"]["questions"].get(question_id)
