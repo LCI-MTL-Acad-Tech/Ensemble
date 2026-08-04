@@ -143,6 +143,8 @@
   "drawer_qr": "Join by QR code",
   "qr_hint": "Others can scan this to join.",
   "nav_groups": "Groups",
+  "nav_slide": "Slide",
+  "slide_no_content": "No slide loaded yet.",
 
   "qna_placeholder": "Ask a question…",
   "qna_submit": "Ask",

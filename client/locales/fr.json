@@ -143,6 +143,8 @@
   "drawer_qr": "Rejoindre par code QR",
   "qr_hint": "D'autres peuvent scanner ceci pour rejoindre.",
   "nav_groups": "Groupes",
+  "nav_slide": "Diapositive",
+  "slide_no_content": "Aucune diapositive chargée pour le moment.",
 
   "qna_placeholder": "Posez une question…",
   "qna_submit": "Envoyer",

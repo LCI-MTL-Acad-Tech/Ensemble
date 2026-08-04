@@ -79,6 +79,13 @@ actions (loading/pinning things) immediately, then waits:
 - **q** → quit the stepper (the live session itself keeps running — this
   only exits the script controller)
 
+Step 1 is a welcome slide, not a timed part of the hour — run
+`script run` as soon as you're set up, well before the official start
+time, and just leave it sitting there while people trickle in and join.
+Since it's pinned, everyone who joins during that window lands on it
+directly instead of an empty whiteboard. Move on to step 2 (the
+icebreaker) once most of the room has arrived.
+
 The rest of this guide is the same run-sheet as prose, with the reasoning
 and talking points spelled out — useful for rehearsing beforehand and for
 adapting the session later, but the actual button-pressing during class is

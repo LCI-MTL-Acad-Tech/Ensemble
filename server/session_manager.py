@@ -81,6 +81,12 @@ def _blank_state() -> dict[str, Any]:
         "ui": {
             "pinned_tab": None,  # the tab/drawer id the instructor last pinned, or None
         },
+        "slide": {
+            "title": "",
+            "text": "",  # plain text, line breaks preserved
+            "image_url": "",  # servable path, e.g. "/workshops/my-session/en/assets/diagram.png"
+            "loaded": False,
+        },
         "qna": {
             "questions": {}  # question_id -> {id, text, reactions: {client_id: "up"|"down"}, answered, approved, ts}
             # deliberately no submitter name anywhere in here — anonymous by design
@@ -481,6 +487,16 @@ class Session:
 
     def set_pinned_tab(self, target: str | None) -> None:
         self.state["ui"]["pinned_tab"] = target
+
+    # ---- slide (text/image content shown in-app, no need to alt-tab to a deck) ----
+
+    def load_slide(self, title: str, text: str, image_url: str) -> None:
+        self.state["slide"] = {
+            "title": title, "text": text, "image_url": image_url, "loaded": True,
+        }
+
+    def clear_slide(self) -> None:
+        self.state["slide"] = {"title": "", "text": "", "image_url": "", "loaded": False}
 
     # ---- anonymous Q&A queue ----
     #

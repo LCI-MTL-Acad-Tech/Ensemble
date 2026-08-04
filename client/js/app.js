@@ -16,7 +16,7 @@
   // Tabs whose content the instructor has to load before they're worth
   // showing at all — hidden until then, so a room full of people don't
   // see six empty "nothing loaded yet" placeholders on first join.
-  const GATED_TABS = ["poll", "blanks", "order", "spider", "groups"];
+  const GATED_TABS = ["poll", "blanks", "order", "spider", "groups", "slide"];
   const knownLoaded = {};
 
   function isDrawerTarget(target) {
@@ -152,6 +152,11 @@
       myName = name;
       WSHub.send({ type: "join", name });
       overlay.style.display = "none";
+      // A brand-new join, not a silent reconnect (those go through the
+      // "welcome" handler below, not this button) — if the room's
+      // already pinned somewhere (e.g. a welcome slide while people
+      // arrive), land there instead of the whiteboard default.
+      if (pinnedTarget) goToTarget(pinnedTarget);
     }
 
     button.addEventListener("click", join);
@@ -217,6 +222,7 @@
       checkGatedTab("order", !!msg.state.ordering.loaded, false);
       checkGatedTab("spider", !!msg.state.spider.loaded, false);
       checkGatedTab("groups", msg.state.groups.groups.length > 0, false);
+      checkGatedTab("slide", !!msg.state.slide.loaded, false);
     });
 
     WSHub.on("poll_update", (msg) => checkGatedTab("poll", !!msg.poll.question, true));
@@ -224,6 +230,7 @@
     WSHub.on("order_update", (msg) => checkGatedTab("order", !!msg.ordering.loaded, true));
     WSHub.on("spider_update", (msg) => checkGatedTab("spider", !!msg.spider.loaded, true));
     WSHub.on("groups_update", (msg) => checkGatedTab("groups", msg.groups.groups.length > 0, true));
+    WSHub.on("slide_update", (msg) => checkGatedTab("slide", !!msg.slide.loaded, true));
   }
 
   async function boot() {
@@ -249,6 +256,7 @@
     GroupsModule.init();
     TimerModule.init();
     QrModule.init();
+    SlideModule.init();
 
     WSHub.connect();
   }

@@ -48,6 +48,14 @@ below):
   groups grow by one person rather than spinning off a small leftover
   group (47 people at size 4 becomes eight groups of 4 and three of 5, not
   eleven groups of 4 plus one of 3).
+- **Slide** — plain text and/or an image, shown right in the app so
+  there's no alt-tabbing to a slideshow. Useful as a "loading screen"
+  while people join (a welcome message, the session description), a
+  discussion prompt, or a diagram to talk through together. If it's
+  pinned when someone joins for the first time, they land there directly
+  instead of the default whiteboard — but a reconnect after a dropped
+  connection never gets yanked away from wherever they'd actually
+  navigated to (see **Instructor control** below for the mechanics).
 
 **Drawers** (small side panels, reachable from any tab without losing your
 place):
@@ -316,7 +324,10 @@ alongside it), and `_script_action()` in `control.py` for the full list of
 supported `cmd` values (`pin`, `pin_clear`, `order_load`/`reveal`/`reset`,
 `blanks_load`/`reset`, `spider_load`/`reset`, `poll_start`/`close`,
 `groups_make`/`clear`, `timer_set`/`start`/`pause`/`reset`, `tags_clear`,
-`session_reset`, `whiteboard_clear`).
+`session_reset`, `whiteboard_clear`, `slide_load`/`slide_clear`). Note
+that `slide_load`'s `image` field (inside the loaded JSON, not the action
+itself) is resolved relative to the *project root*, not the script's
+folder — see **Slide** above for why.
 
 ## Managing sessions
 
@@ -450,6 +461,44 @@ to try each layout immediately.
   pixel-for-pixel match to any specific existing dashboard.
 - **Reset responses** clears everyone's ratings but keeps the axes
   loaded.
+
+### Slide (text and/or an image, shown in-app)
+
+```json
+{
+  "title": "Workshop on AI Guide",
+  "text": "First paragraph.\n\nSecond paragraph, shown after a blank line.",
+  "image": "workshops/my-session/en/assets/diagram.png"
+}
+```
+
+- `title` and `text` are both optional — a slide can be image-only,
+  text-only, or both. `\n` line breaks in `text` are preserved; nothing
+  else is interpreted as markup (it's escaped first), so there's no risk
+  of a stray `<` in your text breaking the layout.
+- `image`, if given, is a path **relative to the project root** — not
+  relative to the template file, unlike the `file` fields in a script's
+  `order_load`/`blanks_load`/etc. actions. That's because it has to
+  resolve to an actual URL: the server serves everything under
+  `workshops/` at `/workshops/...`, so put slide images alongside the
+  rest of that workshop's files (e.g. in a `workshops/my-session/en/assets/`
+  folder next to the JSON templates and the facilitator guide) and
+  reference them as `"workshops/my-session/en/assets/whatever.png"`.
+- Load it with `python control.py slide load my-slide.json [--pin]`, same
+  pattern as the other exercises, and it's a script action too
+  (`{"cmd": "slide_load", "file": "...", "pin": true}` /
+  `{"cmd": "slide_clear"}`) — see `workshops/ai-policy-101/en/script.json`
+  for a real example used as a "loading screen" while people join.
+- **If it's pinned when someone joins for the first time, they land there
+  directly** instead of the whiteboard default — this is what makes the
+  "loading screen while people arrive" pattern actually work: pin the
+  welcome slide before the session starts, and everyone who joins over
+  the next several minutes sees it immediately rather than an empty
+  whiteboard. Critically, this only fires from an actual join — a
+  reconnect after a dropped WiFi connection (see the network note above)
+  re-sends the person's name silently but does **not** force navigation,
+  so someone who'd already moved on to a different tab never gets yanked
+  back just because their connection blipped.
 
 #### Confidence-weighted polling, without any new feature
 
@@ -598,9 +647,13 @@ classroom-tool/
 │       ├── vendor/            qrcode.js (MIT, vendored — see Licensing)
 │       └── modules/           One file per feature (chat, traffic, tags, poll,
 │                              whiteboard, blanks, order, spider, groups, qna,
-│                              timer, qr) — no admin module; there's no browser admin UI
+│                              timer, qr, slide) — no admin module; there's
+│                              no browser admin UI
 ├── sessions/                 Saved session JSON files
 ├── examples/                 Ready-to-load exercise/spider templates to try things out
+├── workshops/                 Full session packages (script + templates + guide +
+│                              assets) — served at /workshops/... too, so slide
+│                              images can live right next to the rest of a session's files
 ├── logs/                     action_log.jsonl — created automatically at startup
 └── requirements.txt
 ```
@@ -611,16 +664,17 @@ classroom-tool/
 broadcasts a small typed message (`chat_message`, `chat_blocked`,
 `tag_blocked`, `traffic_light_update`, `blanks_update`, `order_update`,
 `spider_update`, `qna_update`, `groups_update`, `timer_update`,
-`whiteboard_undo`, `whiteboard_replace`, `pin_update`, etc.) to every
-connected client; each client-side module listens for the message types
-it cares about and re-renders. `app.js` additionally watches
-`poll_update`/`blanks_update`/`order_update`/`spider_update`/
-`groups_update` to decide when a gated tab should appear (see **Tab
-visibility**) — no separate message type needed for that, since whether
-something is "loaded" is already part of each one's own payload.
-Fill-in-the-blanks and Order-the-steps move requests additionally get a
-private (not broadcast) `action_applied` or `action_denied` reply to the
-specific sender — see **Feedback and stale-request protection** below.
+`slide_update`, `whiteboard_undo`, `whiteboard_replace`, `pin_update`,
+etc.) to every connected client; each client-side module listens for the
+message types it cares about and re-renders. `app.js` additionally
+watches `poll_update`/`blanks_update`/`order_update`/`spider_update`/
+`groups_update`/`slide_update` to decide when a gated tab should appear
+(see **Tab visibility**) — no separate message type needed for that,
+since whether something is "loaded" is already part of each one's own
+payload. Fill-in-the-blanks and Order-the-steps move requests
+additionally get a private (not broadcast) `action_applied` or
+`action_denied` reply to the specific sender — see **Feedback and
+stale-request protection** below.
 
 **Instructor actions** go over plain REST (`/api/admin/...`) rather than
 the WebSocket, matching how `control.py` actually uses them — one-off

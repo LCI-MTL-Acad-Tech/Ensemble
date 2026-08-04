@@ -38,7 +38,7 @@ DEFAULT_URL = "http://localhost:8000"
 
 PIN_TARGETS = [
     "whiteboard", "chat", "traffic", "qna", "timer", "tags",
-    "poll", "blanks", "order", "spider", "groups",
+    "poll", "blanks", "order", "spider", "groups", "slide",
 ]
 
 
@@ -265,6 +265,21 @@ def cmd_whiteboard(url, args):
         print("Whiteboard cleared for everyone. (Clients can only undo/erase their own work — this is the only way to wipe the whole board.)")
 
 
+def cmd_slide(url, args):
+    if args.action == "load":
+        t = load_json_file(args.file)
+        image = t.get("image", "").strip()
+        image_url = ("/" + image.lstrip("/")) if image else ""
+        call(url, "POST", "/api/admin/slide/load", {
+            "title": t.get("title", ""), "text": t.get("text", ""), "image_url": image_url,
+        })
+        print("Slide loaded.")
+        maybe_pin(url, "slide", args.pin)
+    elif args.action == "clear":
+        call(url, "POST", "/api/admin/slide/clear")
+        print("Slide cleared.")
+
+
 def cmd_log(url, args):
     import urllib.parse
     qs = {"limit": args.n}
@@ -406,6 +421,19 @@ def _script_action(url: str, action: dict, base_dir: Path) -> str:
     if cmd == "whiteboard_clear":
         call(url, "POST", "/api/admin/whiteboard/clear")
         return "cleared the whiteboard for everyone"
+    if cmd == "slide_load":
+        t = load_json_file(str(base_dir / action["file"]))
+        image = t.get("image", "").strip()
+        image_url = ("/" + image.lstrip("/")) if image else ""
+        call(url, "POST", "/api/admin/slide/load", {
+            "title": t.get("title", ""), "text": t.get("text", ""), "image_url": image_url,
+        })
+        if action.get("pin"):
+            call(url, "POST", "/api/admin/pin", {"target": "slide"})
+        return f"loaded slide ({action['file']})" + (", pinned" if action.get("pin") else "")
+    if cmd == "slide_clear":
+        call(url, "POST", "/api/admin/slide/clear")
+        return "cleared the slide"
 
     raise ApiError(f"Unknown script action: {cmd!r}")
 
@@ -555,6 +583,13 @@ def build_parser() -> argparse.ArgumentParser:
     whiteboard_sub = whiteboard.add_subparsers(dest="action", required=True)
     whiteboard_sub.add_parser("clear")
 
+    slide = sub.add_parser("slide", help="Show text/an image in-app (a 'loading screen' or discussion prompt) — no need to alt-tab to a deck.")
+    slide_sub = slide.add_subparsers(dest="action", required=True)
+    s = slide_sub.add_parser("load")
+    s.add_argument("file")
+    s.add_argument("--pin", action="store_true", help="Also pin everyone to the Slide tab right now.")
+    slide_sub.add_parser("clear")
+
     log = sub.add_parser("log", help="Show recent move requests on the blanks/order exercises — applied and denied.")
     log.add_argument("--n", type=int, default=30, help="How many entries to show (default 30)")
     log.add_argument("--activity", choices=["blanks", "order"], default=None, help="Filter to one activity")
@@ -581,7 +616,7 @@ DISPATCH = {
     "status": cmd_status, "pin": cmd_pin, "session": cmd_session, "poll": cmd_poll,
     "blanks": cmd_blanks, "order": cmd_order, "spider": cmd_spider, "qna": cmd_qna,
     "groups": cmd_groups, "timer": cmd_timer, "tags": cmd_tags, "moderation": cmd_moderation,
-    "whiteboard": cmd_whiteboard, "log": cmd_log, "script": cmd_script,
+    "whiteboard": cmd_whiteboard, "log": cmd_log, "script": cmd_script, "slide": cmd_slide,
 }
 
 
@@ -615,6 +650,7 @@ Classroom Live — control menu
  13) Whiteboard: clear (for everyone)
  14) Log: recent move requests (applied/denied) on blanks + order
  15) Script: step through a facilitator run-sheet (next/back/goto)
+ 16) Slide: show text/an image in-app / clear
   q) Quit
 
 Enter a number, or type a full command line (e.g. "pin poll"): """
@@ -625,7 +661,7 @@ def interactive(url: str) -> None:
     shortcuts = {
         "1": "status", "2": "pin ", "3": "session ", "4": "poll ", "5": "blanks ",
         "6": "order ", "7": "spider ", "8": "qna ", "9": "groups ", "10": "timer ",
-        "11": "tags", "12": "moderation ", "13": "whiteboard ", "14": "log", "15": "script ",
+        "11": "tags", "12": "moderation ", "13": "whiteboard ", "14": "log", "15": "script ", "16": "slide ",
     }
     while True:
         try:

@@ -398,6 +398,12 @@ class PinRequest(BaseModel):
     target: str
 
 
+class SlideLoadRequest(BaseModel):
+    title: str = ""
+    text: str = ""
+    image_url: str = ""
+
+
 class ModerationLoadRequest(BaseModel):
     words: list[str]
 
@@ -579,6 +585,20 @@ async def api_clear_pin():
     return {"ok": True}
 
 
+@app.post("/api/admin/slide/load")
+async def api_slide_load(req: SlideLoadRequest):
+    live.load_slide(req.title, req.text, req.image_url)
+    await manager.broadcast({"type": "slide_update", "slide": live.state["slide"]})
+    return {"ok": True}
+
+
+@app.post("/api/admin/slide/clear")
+async def api_slide_clear():
+    live.clear_slide()
+    await manager.broadcast({"type": "slide_update", "slide": live.state["slide"]})
+    return {"ok": True}
+
+
 @app.get("/api/admin/moderation")
 async def api_moderation_list():
     return {"words": moderation_list.to_list()}
@@ -686,6 +706,15 @@ async def api_timer_reset():
 # ---------------------------------------------------------------- static
 
 app.mount("/static", StaticFiles(directory=CLIENT_DIR), name="static")
+
+# Slide images live alongside the rest of a workshop's content (its JSON
+# templates, the facilitator guide) rather than under client/, so they get
+# their own mount — this is what makes a plain project-root-relative path
+# like "workshops/my-session/en/assets/diagram.png" in a slide template
+# resolve to a real, servable URL.
+WORKSHOPS_DIR = BASE_DIR / "workshops"
+WORKSHOPS_DIR.mkdir(exist_ok=True)
+app.mount("/workshops", StaticFiles(directory=WORKSHOPS_DIR), name="workshops")
 
 
 @app.get("/")

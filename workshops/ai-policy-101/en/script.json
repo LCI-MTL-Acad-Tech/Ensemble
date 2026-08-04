@@ -2,6 +2,13 @@
   "title": "AI Policy 101 (EN pilot)",
   "steps": [
     {
+      "name": "Pre-session — Welcome slide (put this up before people arrive)",
+      "say": "Nothing to say yet — this is what people see as they trickle in and join. Run this step, then just wait; move on to the icebreaker once most of the room is in.",
+      "actions": [
+        {"cmd": "slide_load", "file": "slide-welcome.json", "pin": true}
+      ]
+    },
+    {
       "name": "0:00 — Icebreaker: one word",
       "say": "Add one word to the shared board: what's your current relationship with AI in your teaching, right now, honestly?",
       "actions": [{"cmd": "pin", "target": "tags"}]
