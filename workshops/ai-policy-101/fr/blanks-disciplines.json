@@ -1,0 +1,16 @@
+{
+  "title": "Associez la préoccupation à la discipline",
+  "text": "Sciences infirmières et de la santé :\n{{1}}\n\nInformatique et TI :\n{{2}}\n\nDesign et arts créatifs :\n{{3}}\n\nAdministration et gestion :\n{{4}}\n\nLettres et sciences humaines :\n{{5}}",
+  "answers": {
+    "1": "Les étudiant.e.s perdront-ils le jugement clinique qu'on ne peut développer qu'en raisonnant soi-même à travers des cas ?",
+    "2": "Les étudiant.e.s remettent-ils du code qu'ils ne peuvent pas vraiment expliquer ou déboguer ?",
+    "3": "Le travail leur appartient-il encore véritablement si l'IA en a généré une grande partie ?",
+    "4": "Des rapports à l'apparence soignée reposent-ils sur des données ou des sources fabriquées par l'IA ?",
+    "5": "La lecture attentive et la construction d'arguments disparaissent-elles au profit de résumés générés par l'IA ?"
+  },
+  "distractors": [
+    "Le coût énergétique et hydrique de chaque requête en vaut-il vraiment la peine ?",
+    "Peut-on réellement prouver un manquement à l'intégrité avec un détecteur IA ?",
+    "Avons-nous suffisamment de licences institutionnelles pour tout le monde qui veut essayer ?"
+  ]
+}

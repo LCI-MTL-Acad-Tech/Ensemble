@@ -1,0 +1,5 @@
+{
+  "title": "Understanding Generative AI",
+  "text": "A large language model doesn't search for information — at each step it computes a probability distribution over its vocabulary and generates the statistically likely next word or token. The same principle extends to images, audio, music, and code.\n\nBecause the model learns statistical patterns rather than explicit rules, it can generalize in the wrong direction when its training data was biased or unrepresentative.\n\n\"Hallucinations\" are confident, fluent, false statements — not a lie or a bug, but what the model produces in the low-probability zones where its training data was thin or contradictory. The practical rule: treat any LLM output as a first draft to verify against primary sources, never as a source in itself.\n\n(The full page also covers why LLMs are \"black boxes,\" why they have no persistent memory between conversations, and why we're inclined to trust them more than we should.)",
+  "image": "workshops/ai-policy-101/en/assets/section-01.png"
+}

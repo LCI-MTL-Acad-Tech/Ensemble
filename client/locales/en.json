@@ -79,6 +79,9 @@
   "blanks_no_exercise": "No exercise loaded yet.",
   "blanks_pool_title": "Pieces",
   "blanks_moved_by": "moved by {name}",
+  "blanks_slot_select_title": "Send this piece to a numbered blank without dragging",
+  "blanks_slot_select_pool": "—",
+  "blanks_score": "{correct} of {total} blanks correct",
   "blanks_endorse": "Endorse",
   "blanks_object": "Object",
   "blanks_completion_title": "Are we done?",
@@ -171,6 +174,7 @@
 
   "groups_empty": "No groups yet.",
   "groups_group_label": "Group {n}",
+  "groups_prompt_title": "Your task",
   "admin_groups_title": "Random groups",
   "admin_groups_mode_label": "Grouping method",
   "admin_groups_mode_size": "Groups of a fixed size",

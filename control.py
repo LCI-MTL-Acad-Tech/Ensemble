@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -165,6 +166,9 @@ def cmd_blanks(url, args):
         })
         print("Fill-in-the-blanks exercise loaded.")
         maybe_pin(url, "blanks", args.pin)
+    elif args.action == "reveal":
+        call(url, "POST", "/api/admin/blanks/reveal")
+        print("Answer key revealed — everyone can now see which pieces are correct, plus a score.")
     elif args.action == "reset":
         call(url, "POST", "/api/admin/blanks/reset")
         print("Pieces reset.")
@@ -200,10 +204,10 @@ def cmd_spider(url, args):
 
 def _qna_render(questions: dict) -> None:
     print("\n--- Live Q&A ---")
-    print("  <q-prefix> <text>       = post an instructor reply")
-    print("  a/d/x <q-prefix>        = approve/disapprove/delete the QUESTION")
-    print("  ra/rr/rx <reply-prefix> = accept/reject/delete a REPLY")
-    print("  b                       = back")
+    print("  q<N> <text>      = post an instructor reply")
+    print("  a/d/x q<N>       = approve/disapprove/delete a QUESTION")
+    print("  ra/rr/rx q<N>r<M> = accept/reject/delete reply M of question N")
+    print("  b                = back")
     if not questions:
         print("  (no questions yet)")
         return
@@ -213,7 +217,9 @@ def _qna_render(questions: dict) -> None:
         mark = "✓" if q["answered"] else " "
         approval = q.get("approval")
         amark = "★" if approval == "approved" else ("🛑" if approval == "disapproved" else " ")
-        print(f"  [{mark}][{amark}] 👍{up} 👎{down}  {qid[:8]}  {q['text']}")
+        asker = q.get("asker_name") or "?"
+        qseq = q.get("seq", "?")
+        print(f"  [{mark}][{amark}] 👍{up} 👎{down}  q{qseq}  ({asker})  {q['text']}")
         for r in q.get("replies", []):
             rup = sum(1 for v in r["reactions"].values() if v == "up")
             rdown = sum(1 for v in r["reactions"].values() if v == "down")
@@ -221,22 +227,38 @@ def _qna_render(questions: dict) -> None:
             dmark = "✓accepted" if decision == "accepted" else ("✗rejected" if decision == "rejected" else "")
             who = "Instructor" if r.get("from_instructor") else (r.get("author_name") or "Anonymous")
             tag = f" [{dmark}]" if dmark else ""
-            print(f"          ↳ {r['id'][:8]}  ({who}) 👍{rup} 👎{rdown}{tag}  {r['text']}")
+            print(f"          ↳ q{qseq}r{r.get('seq', '?')}  ({who}) 👍{rup} 👎{rdown}{tag}  {r['text']}")
 
 
-def _find_by_prefix(ids, prefix):
-    return next((i for i in ids if i.startswith(prefix)), None)
+def _find_question_by_ref(questions: dict, ref: str):
+    """Match a question by its short display id (q3, or bare 3) — not the
+    underlying uuid, which nobody should have to read or type."""
+    ref = ref.strip().lower()
+    if ref.startswith("q"):
+        ref = ref[1:]
+    if not ref.isdigit():
+        return None
+    n = int(ref)
+    return next((qid for qid, q in questions.items() if q.get("seq") == n), None)
 
 
-def _find_reply(questions: dict, prefix: str):
-    """Search every reply of every question for one whose id starts with
-    `prefix` — replies aren't nested under a question in the command
-    language, since typing two ids for one action would be tedious and
-    the prefixes are already short and distinctive enough on their own."""
+_REPLY_REF_RE = re.compile(r"^q?(\d+)r(\d+)$", re.IGNORECASE)
+
+
+def _find_reply_by_ref(questions: dict, ref: str):
+    """Match a reply by its q{i}r{j} display id — the jth reply to the
+    ith question, both numbered from 1 within their own scope. Accepts
+    the ref with or without the leading 'q'."""
+    m = _REPLY_REF_RE.match(ref.strip())
+    if not m:
+        return None, None
+    q_seq, r_seq = int(m.group(1)), int(m.group(2))
     for qid, q in questions.items():
-        for r in q.get("replies", []):
-            if r["id"].startswith(prefix):
-                return qid, r
+        if q.get("seq") == q_seq:
+            for r in q.get("replies", []):
+                if r.get("seq") == r_seq:
+                    return qid, r
+            return None, None
     return None, None
 
 
@@ -246,20 +268,24 @@ async def _qna_watch_async(url: str) -> None:
     ws_url = url.replace("http://", "ws://").replace("https://", "wss://").rstrip("/") + "/ws"
     questions: dict = {}
 
+    async def refresh():
+        # session_state/qna_update over the websocket are sanitized (no
+        # asker names, for participants) — control.py talks to the
+        # unsanitized REST endpoint instead, specifically so the
+        # instructor-facing watch view can show who asked.
+        questions.clear()
+        questions.update(call(url, "GET", "/api/session")["state"]["qna"]["questions"])
+        _qna_render(questions)
+
     async with websockets.connect(ws_url) as ws:
         async def receiver():
             async for raw in ws:
                 msg = json.loads(raw)
-                if msg.get("type") == "session_state":
-                    questions.clear()
-                    questions.update(msg["state"]["qna"]["questions"])
-                    _qna_render(questions)
-                elif msg.get("type") == "qna_update":
-                    questions.clear()
-                    questions.update(msg["qna"]["questions"])
-                    _qna_render(questions)
+                if msg.get("type") in ("session_state", "qna_update"):
+                    await refresh()
 
         recv_task = asyncio.create_task(receiver())
+        await refresh()
         try:
             while True:
                 line = (await asyncio.to_thread(input, "\nqna> ")).strip()
@@ -269,9 +295,9 @@ async def _qna_watch_async(url: str) -> None:
                 cmd0 = parts[0]
 
                 if cmd0 in ("a", "d", "x") and len(parts) == 2:
-                    match = _find_by_prefix(questions, parts[1])
+                    match = _find_question_by_ref(questions, parts[1])
                     if not match:
-                        print("  no question with that id prefix")
+                        print("  no question with that id")
                         continue
                     if cmd0 == "a":
                         call(url, "POST", "/api/admin/qna/approval", {"question_id": match, "value": "approved"})
@@ -282,9 +308,9 @@ async def _qna_watch_async(url: str) -> None:
                     continue
 
                 if cmd0 in ("ra", "rr", "rx") and len(parts) == 2:
-                    qid, reply = _find_reply(questions, parts[1])
+                    qid, reply = _find_reply_by_ref(questions, parts[1])
                     if not reply:
-                        print("  no reply with that id prefix")
+                        print("  no reply with that id")
                         continue
                     if cmd0 == "ra":
                         call(url, "POST", "/api/admin/qna/reply_decision", {"question_id": qid, "reply_id": reply["id"], "value": "accepted"})
@@ -295,12 +321,12 @@ async def _qna_watch_async(url: str) -> None:
                     continue
 
                 if len(parts) == 2:
-                    match = _find_by_prefix(questions, parts[0])
+                    match = _find_question_by_ref(questions, parts[0])
                     if match:
                         call(url, "POST", "/api/admin/qna/reply", {"question_id": match, "text": parts[1]})
                         continue
 
-                print("  usage: <q-prefix> <reply text>  |  a/d/x <q-prefix>  |  ra/rr/rx <reply-prefix>  |  b to go back")
+                print("  usage: q<N> <reply text>  |  a/d/x q<N>  |  ra/rr/rx q<N>r<M>  |  b to go back")
         finally:
             recv_task.cancel()
             try:
@@ -322,30 +348,7 @@ def cmd_qna(url, args):
         return
     if args.action == "list":
         questions = call(url, "GET", "/api/session")["state"]["qna"]["questions"]
-        if not questions:
-            print("(no questions)")
-        for qid, q in sorted(
-            questions.items(),
-            key=lambda kv: (
-                kv[1]["answered"],
-                -sum(1 for r in kv[1]["reactions"].values() if r == "up")
-                + sum(1 for r in kv[1]["reactions"].values() if r == "down"),
-            ),
-        ):
-            up = sum(1 for r in q["reactions"].values() if r == "up")
-            down = sum(1 for r in q["reactions"].values() if r == "down")
-            answered_mark = "✓" if q["answered"] else " "
-            approval = q.get("approval")
-            approval_mark = "★" if approval == "approved" else ("🛑" if approval == "disapproved" else " ")
-            print(f"  [{answered_mark}][{approval_mark}] 👍{up} 👎{down}  {q['text']}   (id: {qid})")
-            for r in q.get("replies", []):
-                rup = sum(1 for v in r["reactions"].values() if v == "up")
-                rdown = sum(1 for v in r["reactions"].values() if v == "down")
-                decision = r.get("decision")
-                dmark = " [accepted]" if decision == "accepted" else (" [rejected]" if decision == "rejected" else "")
-                who = "Instructor" if r.get("from_instructor") else (r.get("author_name") or "Anonymous")
-                print(f"        ↳ ({who}) 👍{rup} 👎{rdown}{dmark}  {r['text']}   (reply id: {r['id']})")
-        print("  ([answered] [★ approved / 🛑 disapproved] — instructor-only, separate from the room's 👍/👎)")
+        _qna_render(questions)
     elif args.action == "answer":
         call(url, "POST", "/api/admin/qna/answer", {"question_id": args.id, "answered": not args.unanswer})
         print("Updated.")
@@ -378,9 +381,13 @@ def cmd_qna(url, args):
 
 def cmd_groups(url, args):
     if args.action == "make":
-        call(url, "POST", "/api/admin/groups/make", {"mode": args.mode, "param": args.param})
+        call(url, "POST", "/api/admin/groups/make", {"mode": args.mode, "param": args.param, "prompt": args.prompt})
         print("Groups made.")
         maybe_pin(url, "groups", args.pin)
+    elif args.action == "prompt":
+        text = " ".join(args.text)
+        call(url, "POST", "/api/admin/groups/prompt", {"text": text})
+        print("Prompt updated — shown above the group cards for everyone.")
     elif args.action == "clear":
         call(url, "POST", "/api/admin/groups/clear")
         print("Groups cleared.")
@@ -405,15 +412,30 @@ def cmd_whiteboard(url, args):
     if args.action == "clear":
         call(url, "POST", "/api/admin/whiteboard/clear")
         print("Whiteboard cleared for everyone. (Clients can only undo/erase their own work — this is the only way to wipe the whole board.)")
+    elif args.action == "background":
+        image_url = _project_path_to_url(args.image)
+        call(url, "POST", "/api/admin/whiteboard/background", {"image_url": image_url})
+        print("Background image set — everyone draws on top of it now.")
+    elif args.action == "background-clear":
+        call(url, "POST", "/api/admin/whiteboard/background/clear")
+        print("Background image cleared. (Strokes and notes are untouched.)")
+
+
+def _project_path_to_url(path: str) -> str:
+    """A path relative to the project root (e.g. 'workshops/x/assets/a.png')
+    becomes a servable URL by prefixing '/' — see the /workshops static
+    mount in main.py. Used anywhere a template references a local image."""
+    path = path.strip()
+    return ("/" + path.lstrip("/")) if path else ""
 
 
 def cmd_slide(url, args):
     if args.action == "load":
         t = load_json_file(args.file)
-        image = t.get("image", "").strip()
-        image_url = ("/" + image.lstrip("/")) if image else ""
+        image_url = _project_path_to_url(t.get("image", ""))
         call(url, "POST", "/api/admin/slide/load", {
-            "title": t.get("title", ""), "text": t.get("text", ""), "image_url": image_url,
+            "title": t.get("title", ""), "text": t.get("text", ""),
+            "image_url": image_url, "qr_url": t.get("qr_url", ""),
         })
         print("Slide loaded.")
         maybe_pin(url, "slide", args.pin)
@@ -512,6 +534,9 @@ def _script_action(url: str, action: dict, base_dir: Path) -> str:
         if action.get("pin"):
             call(url, "POST", "/api/admin/pin", {"target": "blanks"})
         return f"loaded blanks exercise ({action['file']})" + (", pinned" if action.get("pin") else "")
+    if cmd == "blanks_reveal":
+        call(url, "POST", "/api/admin/blanks/reveal")
+        return "revealed the blanks answer key"
     if cmd == "blanks_reset":
         call(url, "POST", "/api/admin/blanks/reset")
         return "reset the blanks exercise"
@@ -535,7 +560,10 @@ def _script_action(url: str, action: dict, base_dir: Path) -> str:
         call(url, "POST", "/api/admin/poll/close")
         return "closed the poll"
     if cmd == "groups_make":
-        call(url, "POST", "/api/admin/groups/make", {"mode": action.get("mode", "size"), "param": action.get("param", 4)})
+        call(url, "POST", "/api/admin/groups/make", {
+            "mode": action.get("mode", "size"), "param": action.get("param", 4),
+            "prompt": action.get("prompt"),
+        })
         if action.get("pin"):
             call(url, "POST", "/api/admin/pin", {"target": "groups"})
         return "made groups" + (", pinned" if action.get("pin") else "")
@@ -565,14 +593,21 @@ def _script_action(url: str, action: dict, base_dir: Path) -> str:
         return "cleared the whiteboard for everyone"
     if cmd == "slide_load":
         t = load_json_file(str(base_dir / action["file"]))
-        image = t.get("image", "").strip()
-        image_url = ("/" + image.lstrip("/")) if image else ""
+        image_url = _project_path_to_url(t.get("image", ""))
         call(url, "POST", "/api/admin/slide/load", {
-            "title": t.get("title", ""), "text": t.get("text", ""), "image_url": image_url,
+            "title": t.get("title", ""), "text": t.get("text", ""),
+            "image_url": image_url, "qr_url": t.get("qr_url", ""),
         })
         if action.get("pin"):
             call(url, "POST", "/api/admin/pin", {"target": "slide"})
         return f"loaded slide ({action['file']})" + (", pinned" if action.get("pin") else "")
+    if cmd == "whiteboard_background":
+        image_url = _project_path_to_url(action.get("image", ""))
+        call(url, "POST", "/api/admin/whiteboard/background", {"image_url": image_url})
+        return f"set whiteboard background ({action.get('image', '')})"
+    if cmd == "whiteboard_background_clear":
+        call(url, "POST", "/api/admin/whiteboard/background/clear")
+        return "cleared whiteboard background"
     if cmd == "slide_clear":
         call(url, "POST", "/api/admin/slide/clear")
         return "cleared the slide"
@@ -722,6 +757,7 @@ def build_parser() -> argparse.ArgumentParser:
     s = blanks_sub.add_parser("load")
     s.add_argument("file")
     s.add_argument("--pin", action="store_true", help="Also pin everyone to the Fill blanks tab right now.")
+    blanks_sub.add_parser("reveal", help="Show which pieces are correct, plus a score.")
     blanks_sub.add_parser("reset")
 
     order = sub.add_parser("order", help="Load/reveal/reset the ordering exercise.")
@@ -746,11 +782,11 @@ def build_parser() -> argparse.ArgumentParser:
     s = qna_sub.add_parser("answer"); s.add_argument("id"); s.add_argument("--unanswer", action="store_true")
     s = qna_sub.add_parser("reply", help="Post a typed reply, visible to everyone under that question; also marks it answered.")
     s.add_argument("id"); s.add_argument("text", nargs="+", help="The reply text (wrap in quotes, or it's joined from multiple words)")
-    s = qna_sub.add_parser("reply-accept", help="Toggle accepted on one reply (instructor-only; full ids — use 'qna watch' for prefix matching).")
+    s = qna_sub.add_parser("reply-accept", help="Toggle accepted on one reply (instructor-only; full ids — use 'qna watch' with its short q<N>/r<N> ids instead).")
     s.add_argument("id", help="question id"); s.add_argument("reply_id")
-    s = qna_sub.add_parser("reply-reject", help="Toggle rejected on one reply (instructor-only; full ids — use 'qna watch' for prefix matching).")
+    s = qna_sub.add_parser("reply-reject", help="Toggle rejected on one reply (instructor-only; full ids — use 'qna watch' with its short q<N>/r<N> ids instead).")
     s.add_argument("id", help="question id"); s.add_argument("reply_id")
-    s = qna_sub.add_parser("reply-delete", help="Delete one reply (full ids — use 'qna watch' for prefix matching).")
+    s = qna_sub.add_parser("reply-delete", help="Delete one reply (full ids — use 'qna watch' with its short q<N>/r<N> ids instead).")
     s.add_argument("id", help="question id"); s.add_argument("reply_id")
     s = qna_sub.add_parser("approve", help="Toggle ★ approved (instructor-only; clicking again clears it).")
     s.add_argument("id")
@@ -764,7 +800,10 @@ def build_parser() -> argparse.ArgumentParser:
     s = groups_sub.add_parser("make")
     s.add_argument("--mode", choices=["size", "count"], default="size")
     s.add_argument("--param", type=int, default=4)
+    s.add_argument("--prompt", default=None, help="What the groups should do — shown above the cards. Omit to keep whatever prompt is already set.")
     s.add_argument("--pin", action="store_true", help="Also pin everyone to the Groups tab right now.")
+    s = groups_sub.add_parser("prompt", help="Set/update the task prompt shown above the group cards, without remaking the groups.")
+    s.add_argument("text", nargs="+")
     groups_sub.add_parser("clear")
 
     timer = sub.add_parser("timer", help="Set/start/pause/reset the shared countdown timer.")
@@ -774,9 +813,12 @@ def build_parser() -> argparse.ArgumentParser:
     timer_sub.add_parser("pause")
     timer_sub.add_parser("reset")
 
-    whiteboard = sub.add_parser("whiteboard", help="Clear the whole whiteboard for everyone (clients can only undo/erase their own work).")
+    whiteboard = sub.add_parser("whiteboard", help="Clear the whole whiteboard for everyone, or set a background image for collective annotation.")
     whiteboard_sub = whiteboard.add_subparsers(dest="action", required=True)
     whiteboard_sub.add_parser("clear")
+    s = whiteboard_sub.add_parser("background", help="Load an image underneath the drawing layer — for annotating a diagram/photo together.")
+    s.add_argument("image", help="Path relative to the project root, e.g. workshops/my-session/en/assets/diagram.png")
+    whiteboard_sub.add_parser("background-clear", help="Remove the background image (strokes and notes are untouched).")
 
     slide = sub.add_parser("slide", help="Show text/an image in-app (a 'loading screen' or discussion prompt) — no need to alt-tab to a deck.")
     slide_sub = slide.add_subparsers(dest="action", required=True)

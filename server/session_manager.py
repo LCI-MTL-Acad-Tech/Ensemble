@@ -46,6 +46,7 @@ def _blank_state() -> dict[str, Any]:
             "strokes": [],  # {id, color, size, points: [[x,y],...], owner: client_id}
             "postits": [],  # {id, x, y, color, text_color, font_size, text, owner: client_id}
             "history": {},  # client_id -> [{"type": "stroke"|"postit", "id": ...}, ...] — undo stack
+            "background_image_url": "",  # optional image underneath the strokes, for annotating a diagram/photo
         },
         "fill_blanks": {
             "title": "",
@@ -57,6 +58,7 @@ def _blank_state() -> dict[str, Any]:
             "reactions": {},  # piece_id -> {client_id: {"name": name, "type": "endorse"|"object"}}
             "votes": {},  # client_id -> {"name": name, "vote": "yes"|"no"|"unsure"}
             "rev": 0,  # bumped on every move — lets clients detect a stale request (see move_blank_piece)
+            "revealed": False,  # instructor has revealed which pieces are actually correct
             "loaded": False,
         },
         "spider": {
@@ -85,16 +87,25 @@ def _blank_state() -> dict[str, Any]:
             "title": "",
             "text": "",  # plain text, line breaks preserved
             "image_url": "",  # servable path, e.g. "/workshops/my-session/en/assets/diagram.png"
+            "qr_url": "",  # arbitrary URL to render as a QR code — unlike the join-QR drawer, this
+                            # can point anywhere (a resource, a form, a contact page), not just this server
             "loaded": False,
         },
         "qna": {
-            "questions": {}  # question_id -> {id, text, reactions: {client_id: "up"|"down"}, answered, approved, ts}
-            # deliberately no submitter name anywhere in here — anonymous by design
+            "questions": {},  # question_id -> {id, seq, text, asker_client_id, asker_name, reactions, answered, approval, replies, ts}
+            # Asker identity is stored (so the instructor can see who asked,
+            # e.g. in `qna list`/`qna watch`) but deliberately stripped out
+            # of anything broadcast over the websocket to browsers — see
+            # _sanitize_qna_for_clients() in main.py. Participants never see
+            # it; that's enforced at the point data leaves the server, not
+            # by merely hiding it in the UI.
+            "next_question_seq": 1,  # short display ids (q1, q2, ...) instead of raw uuids
         },
         "groups": {
             "mode": "size",  # "size" (groups of N people) or "count" (N groups total)
             "param": 4,
             "groups": [],  # [[{"client_id":.., "name":..}, ...], ...]
+            "prompt": "",  # what the groups are supposed to do — shown above the cards so it isn't only ever said out loud
             "generated_at": None,
         },
         "timer": {
@@ -182,10 +193,18 @@ class Session:
                 return
 
     def clear_whiteboard(self) -> None:
-        # instructor-only ("clear for everyone") — clients get undo / erase-my-work instead
+        # instructor-only ("clear for everyone") — clients get undo / erase-my-work instead.
+        # Deliberately doesn't touch the background image: clearing drawings
+        # shouldn't also rip out the diagram/photo everyone's annotating.
         self.state["whiteboard"]["strokes"] = []
         self.state["whiteboard"]["postits"] = []
         self.state["whiteboard"]["history"] = {}
+
+    def set_whiteboard_background(self, image_url: str) -> None:
+        self.state["whiteboard"]["background_image_url"] = image_url
+
+    def clear_whiteboard_background(self) -> None:
+        self.state["whiteboard"]["background_image_url"] = ""
 
     def upsert_postit(self, postit: dict, owner: str | None = None) -> bool:
         """Create or update a postit. Returns True if this was a brand-new
@@ -275,6 +294,7 @@ class Session:
             "reactions": {pid: {} for pid in pieces},
             "votes": {},
             "rev": 0,
+            "revealed": False,
             "loaded": True,
         }
 
@@ -285,7 +305,13 @@ class Session:
         fb["placements"] = {pid: {"blank_id": None, "moved_by": None} for pid in fb["pieces"]}
         fb["reactions"] = {pid: {} for pid in fb["pieces"]}
         fb["votes"] = {}
+        fb["revealed"] = False
         fb["rev"] = fb.get("rev", 0) + 1  # invalidates any move already in flight when reset happened
+
+    def reveal_blanks(self) -> None:
+        fb = self.state["fill_blanks"]
+        if fb.get("loaded"):
+            fb["revealed"] = True
 
     def move_blank_piece(self, piece_id: str, blank_id: str | None, mover_name: str, client_rev: int | None) -> dict:
         """Move a piece, but only if the client's request was made against
@@ -490,13 +516,13 @@ class Session:
 
     # ---- slide (text/image content shown in-app, no need to alt-tab to a deck) ----
 
-    def load_slide(self, title: str, text: str, image_url: str) -> None:
+    def load_slide(self, title: str, text: str, image_url: str, qr_url: str = "") -> None:
         self.state["slide"] = {
-            "title": title, "text": text, "image_url": image_url, "loaded": True,
+            "title": title, "text": text, "image_url": image_url, "qr_url": qr_url, "loaded": True,
         }
 
     def clear_slide(self) -> None:
-        self.state["slide"] = {"title": "", "text": "", "image_url": "", "loaded": False}
+        self.state["slide"] = {"title": "", "text": "", "image_url": "", "qr_url": "", "loaded": False}
 
     # ---- anonymous Q&A queue ----
     #
@@ -509,18 +535,24 @@ class Session:
     # own instructor accept/reject "decision" — none of these four things
     # affect each other directly.
 
-    def add_qna_question(self, text: str) -> dict:
+    def add_qna_question(self, text: str, client_id: str, name: str) -> dict:
         text = text.strip()[:500]
         if not text:
             return {}
         qid = str(uuid.uuid4())
+        qna = self.state["qna"]
+        seq = qna.get("next_question_seq", 1)
+        qna["next_question_seq"] = seq + 1
         q = {
-            "id": qid, "text": text, "reactions": {},  # client_id -> "up"|"down"
+            "id": qid, "seq": seq, "text": text,
+            "asker_client_id": client_id, "asker_name": name,  # instructor-only, see note on the qna state above
+            "reactions": {},  # client_id -> "up"|"down"
             "answered": False, "approval": None,  # None | "approved" | "disapproved"
             "replies": [],
+            "next_reply_seq": 1,  # per-QUESTION counter — replies display as q{this.seq}r{reply.seq}
             "ts": time.time(),
         }
-        self.state["qna"]["questions"][qid] = q
+        qna["questions"][qid] = q
         return q
 
     def add_qna_reply(
@@ -538,8 +570,10 @@ class Session:
         text = text.strip()[:500]
         if not q or not text:
             return None
+        seq = q.get("next_reply_seq", 1)
+        q["next_reply_seq"] = seq + 1
         reply = {
-            "id": str(uuid.uuid4()),
+            "id": str(uuid.uuid4()), "seq": seq,
             "text": text,
             "author_client_id": client_id,
             "author_name": None if (anonymous and not from_instructor) else ("Instructor" if from_instructor else name),
@@ -626,7 +660,7 @@ class Session:
 
     # ---- random groups ----
 
-    def make_groups(self, connected: list[dict], mode: str, param: int) -> None:
+    def make_groups(self, connected: list[dict], mode: str, param: int, prompt: str | None = None) -> None:
         people = connected[:]
         random.shuffle(people)
         groups: list[list[dict]] = []
@@ -656,15 +690,23 @@ class Session:
                     this_size = base + 1 if i < extra else base
                     groups.append(people[idx:idx + this_size])
                     idx += this_size
+        # keep the existing prompt unless a new one was explicitly given —
+        # re-running "groups make" (e.g. to reshuffle) shouldn't silently
+        # wipe out a prompt that was set separately
+        kept_prompt = prompt if prompt is not None else self.state["groups"].get("prompt", "")
         self.state["groups"] = {
             "mode": mode if mode in ("size", "count") else "size",
             "param": param,
             "groups": groups,
+            "prompt": kept_prompt,
             "generated_at": time.time(),
         }
 
+    def set_groups_prompt(self, text: str) -> None:
+        self.state["groups"]["prompt"] = text.strip()[:1000]
+
     def clear_groups(self) -> None:
-        self.state["groups"] = {"mode": "size", "param": 4, "groups": [], "generated_at": None}
+        self.state["groups"] = {"mode": "size", "param": 4, "groups": [], "prompt": "", "generated_at": None}
 
     # ---- shared countdown timer ----
 

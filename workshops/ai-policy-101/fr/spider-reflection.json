@@ -1,0 +1,9 @@
+{
+  "title": "Où en êtes-vous maintenant ?",
+  "axes": [
+    {"id": "1", "label": "Clarté sur l'échelle à 5 niveaux", "max": 5},
+    {"id": "2", "label": "Aisance à déclarer mon propre usage de l'IA", "max": 5},
+    {"id": "3", "label": "Confiance à concevoir des travaux résistants à l'IA", "max": 5},
+    {"id": "4", "label": "Le niveau de productivité de cette séance pour vous", "max": 5}
+  ]
+}

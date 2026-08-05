@@ -71,6 +71,23 @@ const WhiteboardModule = (() => {
     document.querySelectorAll(".postit").forEach((el) => el.remove());
     postitEls.clear();
     (wb.postits || []).forEach((p) => renderPostit(p));
+
+    applyBackground(wb.background_image_url || "");
+  }
+
+  // The canvas itself is transparent (redrawAll only ever clearRects, never
+  // fills white) specifically so a background image set on the wrap
+  // behind it shows through — this is what turns the whiteboard into
+  // collective annotation over a diagram/photo instead of a blank page.
+  function applyBackground(url) {
+    if (url) {
+      wrap.style.backgroundImage = `url('${url}')`;
+      wrap.style.backgroundSize = "contain";
+      wrap.style.backgroundPosition = "center";
+      wrap.style.backgroundRepeat = "no-repeat";
+    } else {
+      wrap.style.backgroundImage = "";
+    }
   }
 
   function flushPending() {
@@ -306,6 +323,8 @@ const WhiteboardModule = (() => {
       document.querySelectorAll(".postit").forEach((el) => el.remove());
       postitEls.clear();
     });
+
+    WSHub.on("whiteboard_background", (msg) => applyBackground(msg.image_url || ""));
   }
 
   return { init };

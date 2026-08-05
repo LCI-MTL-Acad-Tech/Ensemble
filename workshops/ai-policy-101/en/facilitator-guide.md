@@ -3,8 +3,9 @@
 
 Built from Elisa Schaeffer's LCI Éducation intranet pages (ethics, practice,
 tools, evaluation, training) and the AQPC 2026 talk *"Rester sur la même
-page sur l'IA."* This is the English pilot; once it runs well in the room,
-we translate it to French using the same run-sheet and templates.
+page sur l'IA."* This is the English pilot; a French version
+(`workshops/ai-policy-101/fr/`) mirrors the same run-sheet, templates, and
+script structure exactly.
 
 **Audience:** teaching staff, not students. **Group size:** 40–60 people
 across different programs, headcount unknown until the day of — nothing
@@ -175,14 +176,28 @@ belong to one field more than another."
 python control.py blanks load workshops/ai-policy-101/en/blanks-disciplines.json --pin
 ```
 
+Every piece also has a small numbered dropdown next to it — a drag
+alternative for anyone who finds dragging on a phone difficult, always
+visible rather than a setting someone has to find and turn on first.
+Mention it exists once, briefly, in case anyone needs it, then let the
+room work.
+
 The five matches (Nursing/clinical judgment, CS/code you can't debug,
 Design/whose work is it, Business/fabricated data, Humanities/close
 reading) plus three decoys (environmental cost, detector reliability,
 license availability — all real concerns, just not discipline-specific).
-Once most people have settled, read through the five matches together and
-ask: **"which of these is closest to a worry you've actually had?"** — this
-is usually where the room starts talking to each other rather than just to
-you.
+Once most people have settled:
+
+```bash
+python control.py blanks reveal
+```
+
+This grades every blank in place (✓/✗ next to each piece, plus a score)
+and works the same way `order reveal` does — dragging still works
+afterward if anyone wants to fix a wrong match. Read through the five
+correct matches together and ask: **"which of these is closest to a
+worry you've actually had?"** — this is usually where the room starts
+talking to each other rather than just to you.
 
 **Worth a 30-second aside here, no activity needed:** a spring 2026 survey
 of the LCI network — 136 respondents, 11 institutions, 340 programs — found
@@ -202,8 +217,14 @@ There are a couple of decoys in the pool."
 python control.py blanks load workshops/ai-policy-101/en/blanks-ai-ethics.json --pin
 ```
 
-Once most people have filled it in, read the completed paragraph aloud and
-briefly unpack the two facts most likely to be new to the room:
+Once most people have filled it in:
+
+```bash
+python control.py blanks reveal
+```
+
+Read the completed paragraph aloud with the score showing, and briefly
+unpack the two facts most likely to be new to the room:
 
 - **Detectors and false positives**: detectors over-flag strong, fluent
   writing (the style we're trying to teach) and are biased against
@@ -219,22 +240,31 @@ briefly unpack the two facts most likely to be new to the room:
 
 ## 0:40–0:50 — Redesign in groups
 
-**Say:** "Same base assignment for everyone — up on the Slide tab now, and
-it'll stay there the whole time if you need to check it again. In your
-group, rewrite those instructions twice: once as a Level 1 version (AI
-only for planning, the reflection itself is entirely the student's own
-thinking) and once as a Level 3 version (AI used extensively, but the
-student must direct and justify it). When you're done, post your Level 3
-version as a sticky note on the Whiteboard tab."
+**Say:** "Find your group on this tab — the task is right there with it,
+and it stays visible the whole time, even once the timer's running."
 
 ```bash
-python control.py groups make --mode size --param 4
-python control.py pin groups
+python control.py groups make --mode size --param 4 \
+  --prompt "Spend 10 minutes reflecting on how a course concept connects to a real-world example, and be ready to talk about what you noticed.
+
+In your group, rewrite these instructions twice:
+
+Level 1 — AI only for planning.
+The final reflection must be entirely the student's own thinking.
+
+Level 3 — AI used extensively.
+The student must direct and justify how they used it.
+
+Post your Level 3 version as a sticky note on the Whiteboard tab." \
+  --pin
 ```
 
-With an unknown headcount (40–60), `--mode size --param 4` is easier to
-reason about live than guessing a group *count* — you're saying "aim for
-groups of 4" rather than pre-calculating how many groups that implies.
+The Groups tab is one unified view now — the task prompt, the group
+cards, and a live timer readout all together, so nobody has to remember
+a verbally-stated task or flip to a different tab to check how much time
+is left. With an unknown headcount (40–60), `--mode size --param 4` is
+easier to reason about live than guessing a group *count* — you're saying
+"aim for groups of 4" rather than pre-calculating how many that implies.
 The grouping never lets a group shrink below the size you asked for: if
 the room doesn't divide evenly by 4, some groups grow to 5 rather than a
 leftover group of 1 or 2 showing up (e.g. 47 people becomes eight groups
@@ -243,35 +273,24 @@ if you want to see the actual split before people go looking for their
 name). If discussion quality matters more than exact group size for a
 given room, `--param 3` or `--param 5` both work the same way.
 
-Give them a minute to find their group, then show the assignment they're
-redesigning:
+Note the prompt is deliberately worded as a *time-boxed, spoken*
+reflection — "spend 10 minutes reflecting... be ready to talk about it" —
+rather than a word-limited written one. An earlier version asked for "a
+500-word reflection," which reads as something participants themselves
+need to sit down and write during the workshop, and there's nowhere in
+the app for that (post-its are for short notes, not essays). The actual
+written output of this block is the *rewritten instructions*, which do
+have a place to go — the sticky note.
 
-```bash
-python control.py slide load workshops/ai-policy-101/en/slide-assignment.json --pin
-```
-
-Note this is deliberately worded as a *time-boxed, spoken* reflection —
-"spend 10 minutes reflecting... be ready to talk about it" — rather than
-a word-limited written one. An earlier version asked for "a 500-word
-reflection," which reads as something participants themselves need to
-sit down and write during the workshop, and there's nowhere in the app
-for that (post-its are for short notes, not essays). The actual written
-output of this block is the *rewritten instructions*, which do have a
-place to go — the sticky note.
-
-Once they've had a moment to read the assignment, start the timer and
-send them to the whiteboard to do the actual rewriting and posting:
+Give them a minute to find their group and read the task, then start the
+timer — the room stays on the same Groups screen throughout, they just
+switch to Whiteboard whenever they're ready to post a note and can switch
+back to check the prompt or the time left:
 
 ```bash
 python control.py timer set 7
 python control.py timer start
-python control.py pin whiteboard
 ```
-
-The Slide tab keeps the assignment loaded even though Whiteboard is now
-the pinned tab — anyone who forgets the wording can just switch back to
-Slide manually to check it, without it being pinned there and getting in
-the way of posting notes.
 
 While they work, circulate. When the timer runs out, bring the room back
 and read two or three of the posted Level 3 notes aloud — the differences
@@ -337,6 +356,22 @@ python control.py qna list           # one-off snapshot instead
 
 ---
 
+## 1:00 — Thank you / contact
+
+```bash
+python control.py slide load workshops/ai-policy-101/en/slide-thankyou.json --pin
+```
+
+**Say:** "Thanks, everyone. Here's how to find the Guide again and reach
+me afterward — and if you're on the portable router rather than your
+usual WiFi, disconnect from it now to get your regular internet back."
+
+The QR code points at the AI Guide's real intranet URL and the slide
+shows your actual contact email — both are already filled in, not
+placeholders, so this step is ready to use as-is.
+
+---
+
 ## After the session
 
 ```bash
@@ -346,8 +381,8 @@ python control.py log --n 100       # sanity-check nothing broke during live use
 
 Saving under a dated name keeps this pilot run as a reference distinct from
 the reusable templates in `workshops/ai-policy-101/en/`, which stay as
-clean starting points for the next run (English or, once translated,
-French).
+clean starting points for the next run. The French version lives in
+`workshops/ai-policy-101/fr/` with its own facilitator guide.
 
 ## Sources this workshop draws on
 

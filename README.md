@@ -24,7 +24,13 @@ below):
   background, near-black text). Anyone can **undo** their own last action
   (a stroke or a note) or **erase my work** (everything *they* added, in
   one go) — but clearing the *whole* board for everyone is
-  instructor-only, from `control.py`, not a button in the browser.
+  instructor-only, from `control.py`, not a button in the browser. An
+  optional background image turns it into collective annotation over a
+  diagram or photo instead of a blank page — `python control.py
+  whiteboard background workshops/my-session/en/assets/diagram.png` (path
+  relative to the project root, same convention as slide images);
+  `whiteboard background-clear` removes it without touching anyone's
+  strokes or notes.
 - **Tag cloud** — anyone adds a word; the most frequent word sits at the
   center at its full size, and everything else spirals outward around it
   (an Archimedean-spiral layout, same principle as d3-cloud), sized by
@@ -401,12 +407,22 @@ ready to save as a file and try as-is.
   pairs reads much better one-per-line than run together in a paragraph.
 - All pieces start shuffled in one shared pool. Any connected client can
   drag any piece into any blank or back out — no per-piece ownership.
+- Every blank shows a small numbered badge, and every piece has a compact
+  dropdown next to it that sends it to any numbered blank (or back to
+  the pool) without dragging — always visible, not a setting to turn on,
+  since an accessibility affordance someone has to find and enable first
+  defeats a good part of the point. Useful for anyone who finds dragging
+  on a touchscreen difficult.
 - Once a piece sits in a blank, everyone can react to it (👍 endorse /
   👎 object); moving the piece clears its reactions.
 - Everyone votes yes/no/unsure on whether the exercise is done. Not
   voting counts as "unsure" by default.
+- **Reveal** (`python control.py blanks reveal`) grades every blank in
+  place — ✓/✗ next to each piece, plus an overall score — the same way
+  `order reveal` does for the ordering exercise. Dragging (or the
+  dropdown) still works afterward if someone wants to fix a match.
 - **Reset pieces** puts everything back in the pool and clears
-  reactions/votes without re-pasting the template.
+  reactions/votes/the reveal without re-pasting the template.
 
 ### Order the steps
 
@@ -517,6 +533,14 @@ to try each layout immediately.
   re-sends the person's name silently but does **not** force navigation,
   so someone who'd already moved on to a different tab never gets yanked
   back just because their connection blipped.
+- `qr_url`, if given, renders a scannable QR code on the slide — good for
+  a closing "here's the resource / here's how to reach me" screen. Unlike
+  the 📱 join-QR drawer (which always encodes this server's own address,
+  since its job is "how do I connect"), a slide's QR code can point
+  anywhere: an intranet page, a form, a contact link. Add `"qr_url":
+  "https://..."` alongside `title`/`text`/`image` in the template; see
+  `workshops/ai-policy-101/en/slide-thankyou.json` for a real closing
+  slide combining a written contact email with a QR code to a resource.
 
 #### Confidence-weighted polling, without any new feature
 
@@ -545,19 +569,28 @@ problem from one where people are unsure but split.
 These don't need a JSON template — they're driven entirely from
 `control.py`:
 
-- **Q&A** — questions are anonymous: nothing to load, the queue starts
-  empty and fills up as people ask, reacted to with 👍/👎 that just
-  affect sort order (unanswered-first, then by votes) — the server never
-  stores who asked or who reacted. **Replies are different**: anyone —
-  another participant or the instructor — can reply to a question, and
-  replies are attributed by name by default, with a per-reply "reply
-  anonymously" checkbox for anyone who'd rather not have their name on a
-  given answer. Each reply gets its own 👍/👎 from everyone (independent
-  of the question's own votes), and its own instructor accept/reject call
-  (shown as a ✓ Accepted / ✗ Rejected badge — accepted replies float to
-  the top, rejected ones sink to the bottom but stay visible rather than
-  being deleted). Both question and reply text pass through the same
-  chat moderation word list (see below).
+- **Q&A** — questions are anonymous to other participants: nothing to
+  load, the queue starts empty and fills up as people ask, reacted to
+  with 👍/👎 that just affect sort order (unanswered-first, then by
+  votes). The instructor's view is the one exception — `qna list`/`qna
+  watch` show who asked each question, since that's useful for follow-up,
+  but that identity is stripped out of everything sent to browsers before
+  it ever leaves the server, so participants never see it regardless of
+  which tab they're on. **Replies are different**: anyone — another
+  participant or the instructor — can reply to a question, and replies
+  are attributed by name by default, with a per-reply "reply anonymously"
+  checkbox for anyone who'd rather not have their name on a given answer.
+  Each reply gets its own 👍/👎 from everyone (independent of the
+  question's own votes), and its own instructor accept/reject call (shown
+  as a ✓ Accepted / ✗ Rejected badge — accepted replies float to the top,
+  rejected ones sink to the bottom but stay visible rather than being
+  deleted). Both question and reply text pass through the same chat
+  moderation word list (see below).
+  - Questions and replies get short display ids instead of raw uuids:
+    questions are `q1`, `q2`, ... in the order they arrived; replies are
+    numbered *within their own question* as `q1r1`, `q1r2`, `q2r1`, ... —
+    the *j*th reply to question *i* is always `qirj`, never a number
+    that depends on activity elsewhere in the queue.
   - From `control.py`: `qna list` (see everything, replies nested under
     each question) / `qna answer <id>` (toggle answered manually) /
     `qna reply <id> <text>` (post a reply as "Instructor" — always
@@ -571,15 +604,13 @@ These don't need a JSON template — they're driven entirely from
 - **Live Q&A view**: `python control.py qna watch` opens a view that
   updates itself the instant a new question or reply comes in — no
   re-running `qna list` to check — and lets you act on it right there
-  with short id-prefixes instead of full ids: `<q-prefix> <text>` posts
-  an instructor reply, `a`/`d`/`x <q-prefix>` approves/disapproves/
-  deletes a question, `ra`/`rr`/`rx <reply-prefix>` accepts/rejects/
-  deletes one specific reply (searched across every question, so there's
-  only ever one id to type), `b` to leave. Inside `script run`, this is
-  the same view: press **a** at any step to slip into it and **b** to
-  come straight back to that exact step, and it opens automatically the
-  moment a step pins the Q&A tab for the room (no need to remember to
-  check).
+  with the short display ids instead of full uuids: `q<N> <text>` posts
+  an instructor reply, `a`/`d`/`x q<N>` approves/disapproves/deletes a
+  question, `ra`/`rr`/`rx q<N>r<M>` accepts/rejects/deletes one specific
+  reply, `b` to leave. Inside `script run`, this is the same view: press
+  **a** at any step to slip into it and **b** to come straight back to
+  that exact step, and it opens automatically the moment a step pins the
+  Q&A tab for the room (no need to remember to check).
 - **Groups** — `python control.py groups make --mode size --param 4` for
   groups targeting 4 people each, or `--mode count --param 3` for exactly
   3 groups sized as evenly as possible. With `--mode size`, if the
@@ -593,6 +624,13 @@ These don't need a JSON template — they're driven entirely from
   thirteenth would be a lone group of 2). It only groups people who are
   currently connected and have joined with a name — if someone joins
   after the fact, re-run it.
+  - Add `--prompt "..."` to show a task description above the group
+    cards — everyone sees the task, the groups, and a live timer readout
+    all in one screen, rather than needing to remember something stated
+    only out loud or flip to a separate tab to check the time left.
+    Re-running `groups make` without `--prompt` keeps whatever prompt was
+    already set; `python control.py groups prompt "..."` updates just the
+    prompt without remaking the groups.
   `python control.py groups clear` empties the Groups tab back out.
 - **Timer** — `python control.py timer set 5` (minutes) then `timer
   start`; `timer pause` freezes the remaining time (rather than losing

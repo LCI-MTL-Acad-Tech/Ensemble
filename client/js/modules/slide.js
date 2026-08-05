@@ -52,6 +52,28 @@ const SlideModule = (() => {
       panel.appendChild(p);
     }
 
+    if (slide.qr_url) {
+      // Unlike the join-QR drawer (which always encodes this server's own
+      // address), a slide's QR code can point anywhere — a resource page,
+      // a form, a contact link — since a slide is content the facilitator
+      // chose, not a fixed "how do I connect" affordance.
+      const qrWrap = document.createElement("div");
+      qrWrap.className = "slide-qr-wrap";
+      panel.appendChild(qrWrap);
+      new QRCode(qrWrap, {
+        text: slide.qr_url,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+      const urlText = document.createElement("p");
+      urlText.className = "slide-qr-url";
+      urlText.textContent = slide.qr_url;
+      panel.appendChild(urlText);
+    }
+
     body.appendChild(panel);
   }
 

@@ -21,6 +21,12 @@ const BlanksModule = (() => {
     return piece ? piece.text : "";
   }
 
+  function computeBlankOrder(fb) {
+    const order = [];
+    fb.segments.forEach((seg) => { if (seg.type === "blank") order.push(seg.id); });
+    return order;
+  }
+
   function reactionCounts(fb, pieceId) {
     const reactions = fb.reactions[pieceId] || {};
     const endorse = [];
@@ -31,11 +37,45 @@ const BlanksModule = (() => {
     return { endorse, object };
   }
 
-  function renderPieceEl(fb, pieceId, placed) {
+  function renderPieceEl(fb, pieceId, placed, blankOrder) {
     const el = document.createElement("div");
     el.className = "piece" + (placed ? " placed" : "");
     el.dataset.pieceId = pieceId;
-    el.textContent = pieceLabel(fb, pieceId);
+
+    const textSpan = document.createElement("span");
+    textSpan.className = "piece-label";
+    textSpan.textContent = pieceLabel(fb, pieceId);
+    el.appendChild(textSpan);
+
+    // Accessibility alternative to dragging: a compact dropdown that sends
+    // this piece to a numbered blank (or back to the pool) with a
+    // selection instead of a drag gesture. Always present, not behind a
+    // toggle — an accessibility affordance someone has to discover and
+    // switch on first defeats a good part of the point.
+    const select = document.createElement("select");
+    select.className = "piece-slot-select";
+    select.title = I18N.t("blanks_slot_select_title");
+    select.addEventListener("pointerdown", (e) => e.stopPropagation());
+    select.addEventListener("click", (e) => e.stopPropagation());
+    const poolOpt = document.createElement("option");
+    poolOpt.value = "";
+    poolOpt.textContent = I18N.t("blanks_slot_select_pool");
+    select.appendChild(poolOpt);
+    blankOrder.forEach((blankId, i) => {
+      const opt = document.createElement("option");
+      opt.value = blankId;
+      opt.textContent = String(i + 1);
+      select.appendChild(opt);
+    });
+    const currentBlank = (fb.placements[pieceId] && fb.placements[pieceId].blank_id) || "";
+    select.value = currentBlank;
+    select.addEventListener("change", () => {
+      WSHub.send({
+        type: "blanks_move_piece", piece_id: pieceId, blank_id: select.value || null,
+        rev: lastState ? lastState.rev : undefined,
+      });
+    });
+    el.appendChild(select);
 
     if (placed) {
       const placement = fb.placements[pieceId];
@@ -55,6 +95,25 @@ const BlanksModule = (() => {
         });
       });
       el.appendChild(bar);
+    }
+
+    if (fb.revealed) {
+      const piece = fb.pieces[pieceId];
+      const placement = fb.placements[pieceId];
+      if (placed && piece.correct_blank !== null) {
+        const correct = piece.correct_blank === placement.blank_id;
+        const badge = document.createElement("span");
+        badge.className = "piece-grade " + (correct ? "correct" : "incorrect");
+        badge.textContent = correct ? "✓" : "✗";
+        el.appendChild(badge);
+      } else if (placed) {
+        // a distractor sitting in a blank — it can never be "correct", but
+        // say so explicitly rather than leaving it looking ungraded
+        const badge = document.createElement("span");
+        badge.className = "piece-grade incorrect";
+        badge.textContent = "✗";
+        el.appendChild(badge);
+      }
     }
 
     el.addEventListener("pointerdown", (e) => startDrag(e, pieceId, el));
@@ -144,6 +203,7 @@ const BlanksModule = (() => {
     Object.entries(fb.placements).forEach(([pid, p]) => {
       if (p.blank_id !== null) placedByBlank[p.blank_id] = pid;
     });
+    const blankOrder = computeBlankOrder(fb);
 
     const passage = document.createElement("div");
     passage.className = "panel blanks-passage";
@@ -161,9 +221,13 @@ const BlanksModule = (() => {
         const slot = document.createElement("span");
         slot.className = "blank-slot";
         slot.dataset.blankId = seg.id;
+        const numBadge = document.createElement("span");
+        numBadge.className = "blank-number";
+        numBadge.textContent = String(blankOrder.indexOf(seg.id) + 1);
+        slot.appendChild(numBadge);
         const pieceId = placedByBlank[seg.id];
         if (pieceId) {
-          slot.appendChild(renderPieceEl(fb, pieceId, true));
+          slot.appendChild(renderPieceEl(fb, pieceId, true, blankOrder));
         } else {
           slot.classList.add("empty");
         }
@@ -171,6 +235,20 @@ const BlanksModule = (() => {
       }
     });
     passage.appendChild(textWrap);
+
+    if (fb.revealed) {
+      let correctCount = 0;
+      Object.entries(fb.placements).forEach(([pid, p]) => {
+        const piece = fb.pieces[pid];
+        if (piece.correct_blank !== null && p.blank_id === piece.correct_blank) correctCount++;
+      });
+      const scoreP = document.createElement("p");
+      scoreP.className = "hint";
+      scoreP.style.marginTop = "0.75rem";
+      scoreP.textContent = I18N.t("blanks_score", { correct: correctCount, total: blankOrder.length });
+      passage.appendChild(scoreP);
+    }
+
     body.appendChild(passage);
 
     const poolPanel = document.createElement("div");
@@ -185,7 +263,7 @@ const BlanksModule = (() => {
     poolTray.dataset.poolZone = "1";
     fb.pool_order
       .filter((pid) => fb.placements[pid].blank_id === null)
-      .forEach((pid) => poolTray.appendChild(renderPieceEl(fb, pid, false)));
+      .forEach((pid) => poolTray.appendChild(renderPieceEl(fb, pid, false, blankOrder)));
     poolPanel.appendChild(poolTray);
     body.appendChild(poolPanel);
 

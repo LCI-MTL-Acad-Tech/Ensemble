@@ -400,21 +400,21 @@ h2 { margin: 0 0 1rem; }
 .blank-slot {
   display: inline-flex;
   vertical-align: middle;
-  min-width: 90px;
-  min-height: 2rem;
-  margin: 0 0.2rem;
+  min-width: 140px;
+  min-height: 2.8rem;
+  margin: 0.2rem 0.3rem;
 }
 .blank-slot.empty {
   border: 2px dashed var(--line);
   border-radius: var(--radius);
-  min-width: 90px;
+  min-width: 140px;
 }
 .piece {
   background: var(--accent-soft);
   color: var(--ink);
   border: 1px solid var(--accent);
-  border-radius: 999px;
-  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius);
+  padding: 0.55rem 1rem;
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -422,9 +422,40 @@ h2 { margin: 0 0 1rem; }
   align-items: center;
   flex-wrap: wrap;
   gap: 0.4rem;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  min-height: 2.8rem;
 }
 .piece.placed { background: var(--paper-raised); }
+.blank-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.blank-slot.empty .blank-number { margin-right: 0.3rem; }
+.piece-label { margin-right: 0.3rem; }
+.piece-slot-select {
+  font-size: 0.8rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  cursor: pointer;
+  max-width: 3.2rem;
+}
+.piece-grade {
+  font-weight: 800;
+  margin-left: 0.3rem;
+}
+.piece-grade.correct { color: var(--green); }
+.piece-grade.incorrect { color: var(--red); }
 .piece-dragging { opacity: 0.85; box-shadow: var(--shadow); }
 .piece-reactions {
   display: flex;
@@ -783,6 +814,19 @@ footer.appfoot {
 .qna-react-btn.chosen { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- Random groups ---------- */
+.groups-prompt {
+  border-left: 4px solid var(--accent);
+  margin-bottom: 1rem;
+}
+.groups-prompt h3 { margin: 0 0 0.4rem; color: var(--accent); }
+.groups-prompt p { margin: 0; white-space: pre-line; }
+.groups-timer-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+}
 .groups-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -814,6 +858,23 @@ footer.appfoot {
   line-height: 1.6;
   color: var(--ink);
   white-space: pre-line;
+}
+.slide-qr-wrap {
+  background: #ffffff;
+  padding: 14px;
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem auto 0.5rem;
+  /* fixed white background regardless of theme — a dark-mode QR code
+     with inverted colors won't scan reliably on most phones */
+}
+.slide-qr-url {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  word-break: break-all;
 }
 
 /* ---------- Shared timer ---------- */

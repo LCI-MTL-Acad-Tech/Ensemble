@@ -1,0 +1,19 @@
+{
+  "title": "Des faits à retenir",
+  "text": "Une seule requête à un grand modèle de langage consomme environ {{1}} fois plus d'énergie qu'une recherche web typique. En vertu de la loi québécoise sur la protection des renseignements personnels, connue sous le nom de {{2}}, les travaux remis par les étudiant.e.s leur appartiennent — c'est exactement pourquoi les outils IA gratuits ne doivent jamais être utilisés pour noter ou commenter un travail étudiant sans leur {{3}}. Les détecteurs d'IA ne devraient jamais être considérés comme une preuve de manquement à eux seuls : ils produisent de fréquents {{4}} contre une écriture forte et fluide, et sont biaisés contre les {{5}} de l'anglais — au mieux, ils peuvent orienter une enquête, jamais la conclure. La façon la plus fiable de confirmer qu'un.e étudiant.e comprend vraiment son propre travail est probablement de lui demander une {{6}}.",
+  "answers": {
+    "1": "dix",
+    "2": "Loi 25",
+    "3": "consentement éclairé",
+    "4": "faux positifs",
+    "5": "locuteurs et locutrices non natifs",
+    "6": "soutenance orale"
+  },
+  "distractors": [
+    "cinq",
+    "RGPD",
+    "une renonciation signée",
+    "vrais négatifs",
+    "examen écrit"
+  ]
+}

@@ -5,89 +5,246 @@
       "name": "Pre-session — Welcome slide (put this up before people arrive)",
       "say": "Nothing to say yet — this is what people see as they trickle in and join. Run this step, then just wait; move on to the icebreaker once most of the room is in.",
       "actions": [
-        {"cmd": "slide_load", "file": "slide-welcome.json", "pin": true}
+        {
+          "cmd": "slide_load",
+          "file": "slide-welcome.json",
+          "pin": true
+        }
       ]
     },
     {
       "name": "0:00 — Icebreaker: one word",
       "say": "Add one word to the shared board: what's your current relationship with AI in your teaching, right now, honestly?",
-      "actions": [{"cmd": "pin", "target": "tags"}]
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "tags"
+        }
+      ]
     },
     {
       "name": "0:05 — Baseline gut-check",
       "say": "Set your status: doing ok = I feel clear about what's allowed right now, confused = somewhat unsure, stuck = pretty lost, away = haven't thought about it yet. No wrong answer — we compare this again at the end.",
-      "actions": [{"cmd": "pin", "target": "traffic"}]
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "traffic"
+        }
+      ]
+    },
+    {
+      "name": "0:08 — Guide page: Understanding Generative AI",
+      "say": "Quick framing before we dive in: generative AI predicts likely words from patterns, not facts — that's also why it can be confidently wrong.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-01.json",
+          "pin": true
+        }
+      ]
     },
     {
       "name": "0:10 — Order the five AI usage levels",
       "say": "Drag these five statements into order, from most restrictive (no AI at all) to most open (AI as a creative partner).",
       "actions": [
-        {"cmd": "order_load", "file": "order-ai-scale.json", "pin": true}
+        {
+          "cmd": "order_load",
+          "file": "order-ai-scale.json",
+          "pin": true
+        }
       ]
     },
     {
       "name": "0:18 — Reveal the scale order",
       "say": "Let's check the answer together.",
-      "actions": [{"cmd": "order_reveal"}]
+      "actions": [
+        {
+          "cmd": "order_reveal"
+        }
+      ]
+    },
+    {
+      "name": "0:19 — Guide page: Evaluating AI Use",
+      "say": "Here's the Guide page behind what we just did, if you want the fuller version later.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-02.json",
+          "pin": true
+        }
+      ]
     },
     {
       "name": "0:20 — Match the concern to the discipline",
       "say": "Different fields worry about different things when it comes to AI. Drag each concern into the discipline most likely to raise it — a couple of pieces are decoys.",
       "actions": [
-        {"cmd": "blanks_load", "file": "blanks-disciplines.json", "pin": true}
+        {
+          "cmd": "blanks_load",
+          "file": "blanks-disciplines.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:28 — Reveal the discipline matches",
+      "say": "Let's check which ones landed correctly.",
+      "actions": [
+        {
+          "cmd": "blanks_reveal"
+        }
+      ]
+    },
+    {
+      "name": "0:29 — Guide page: Ethics and Impact of AI",
+      "say": "This is the page those discipline concerns are drawn from.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-03.json",
+          "pin": true
+        }
       ]
     },
     {
       "name": "0:30 — Facts worth remembering",
       "say": "Quick reinforcement round — drag the right piece into each blank. There are a couple of decoys here too.",
       "actions": [
-        {"cmd": "blanks_load", "file": "blanks-ai-ethics.json", "pin": true}
+        {
+          "cmd": "blanks_load",
+          "file": "blanks-ai-ethics.json",
+          "pin": true
+        }
       ]
     },
     {
-      "name": "0:40 — Redesign in groups: make the groups",
-      "say": "Find your group on this tab — same base assignment for everyone, shown on the next screen.",
+      "name": "0:38 — Reveal the facts",
+      "say": "Let's see the score and read the completed paragraph together.",
       "actions": [
-        {"cmd": "groups_make", "mode": "size", "param": 4, "pin": true}
+        {
+          "cmd": "blanks_reveal"
+        }
       ]
     },
     {
-      "name": "0:40 (b) — Show the assignment",
-      "say": "Here's the assignment everyone's redesigning — it'll stay up on the Slide tab if you need to check it again.",
+      "name": "0:39 — Guide page: Using AI in the Classroom",
+      "say": "The page behind the redesign task you're about to do.",
       "actions": [
-        {"cmd": "slide_load", "file": "slide-assignment.json", "pin": true}
+        {
+          "cmd": "slide_load",
+          "file": "content-04.json",
+          "pin": true
+        }
       ]
     },
     {
-      "name": "0:41 — Redesign in groups: start the timer, send to whiteboard",
-      "say": "In your group, rewrite the instructions twice: once as a Level 1 version (AI only for planning), once as a Level 3 version (AI used extensively, but directed and justified). Post your Level 3 version as a sticky note.",
+      "name": "0:40 — Redesign in groups: make groups and show the task",
+      "say": "Find your group on this tab — the task is right there too, and it'll stay visible the whole time, even once the timer's running.",
       "actions": [
-        {"cmd": "timer_set", "minutes": 7},
-        {"cmd": "timer_start"},
-        {"cmd": "pin", "target": "whiteboard"}
+        {
+          "cmd": "groups_make",
+          "mode": "size",
+          "param": 4,
+          "pin": true,
+          "prompt": "Spend 10 minutes reflecting on how a course concept connects to a real-world example, and be ready to talk about what you noticed.\n\nIn your group, rewrite these instructions twice:\n\nLevel 1 — AI only for planning.\nThe final reflection must be entirely the student's own thinking.\n\nLevel 3 — AI used extensively.\nThe student must direct and justify how they used it.\n\nPost your Level 3 version as a sticky note on the Whiteboard tab."
+        }
+      ]
+    },
+    {
+      "name": "0:41 — Start the timer",
+      "say": "7 minutes, starting now. Switch to the Whiteboard tab whenever you're ready to post your note — this screen and the timer will still be here when you switch back.",
+      "actions": [
+        {
+          "cmd": "timer_set",
+          "minutes": 7
+        },
+        {
+          "cmd": "timer_start"
+        }
       ]
     },
     {
       "name": "0:48 — Reset the timer after debrief",
       "say": "Let's hear two or three Level 3 notes out loud before we move on.",
-      "actions": [{"cmd": "timer_reset"}]
+      "actions": [
+        {
+          "cmd": "timer_reset"
+        }
+      ]
+    },
+    {
+      "name": "0:49 — Guide pages: Tools and Policies, Building Skills",
+      "say": "Two more pages worth knowing exist, briefly — which tools are approved, and where to go to get better at this.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-05.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:49 (b) — Guide page: Building AI Skills",
+      "say": "And this one, for whenever you want to go deeper yourself.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-06.json",
+          "pin": true
+        }
+      ]
     },
     {
       "name": "0:50 — Closing self-check",
       "say": "Rate yourself on these right now — no one else sees your name attached to your answer, just the shape of the room.",
       "actions": [
-        {"cmd": "spider_load", "file": "spider-reflection.json", "pin": true}
+        {
+          "cmd": "spider_load",
+          "file": "spider-reflection.json",
+          "pin": true
+        }
       ]
     },
     {
       "name": "0:57 — Re-check the baseline",
       "say": "Same check as the start. Let's see if that moved.",
-      "actions": [{"cmd": "pin", "target": "traffic"}]
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "traffic"
+        }
+      ]
     },
     {
       "name": "0:58 — Open Q&A",
       "say": "Anonymous question queue is open — ask anything, including things you didn't want to say out loud. I'll keep it open after we leave the room.",
-      "actions": [{"cmd": "pin", "target": "qna"}]
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "qna"
+        }
+      ]
+    },
+    {
+      "name": "0:59 — Guide page: AI Tip of the Day",
+      "say": "One more small thing before we close — a rotating daily tip lives on the Guide's landing page.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-07.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "1:00 — Thank you / contact",
+      "say": "Thanks, everyone. Here's how to find the Guide again and reach me afterward.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "slide-thankyou.json",
+          "pin": true
+        }
+      ]
     }
   ]
 }

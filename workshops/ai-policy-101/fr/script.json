@@ -1,0 +1,250 @@
+{
+  "title": "Atelier sur le Guide IA (FR)",
+  "steps": [
+    {
+      "name": "Avant la séance — Diapositive de bienvenue (à afficher avant l'arrivée des participant.e.s)",
+      "say": "Rien à dire encore — c'est ce que les gens voient en arrivant et en se connectant. Lancez cette étape, puis attendez simplement ; passez à la mise en train une fois que la majorité de la salle est arrivée.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "slide-welcome.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:00 — Mise en train : un mot",
+      "say": "Ajoutez un mot au tableau partagé : quelle est votre relation actuelle avec l'IA dans votre enseignement, honnêtement ?",
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "tags"
+        }
+      ]
+    },
+    {
+      "name": "0:05 — Vérification de départ",
+      "say": "Réglez votre statut : content = je me sens clair.e sur ce qui est permis en ce moment, confus = plutôt incertain.e, bloqué = plutôt perdu.e, absent = honnêtement je n'y ai pas encore pensé. Pas de mauvaise réponse — on revérifie à la fin.",
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "traffic"
+        }
+      ]
+    },
+    {
+      "name": "0:08 — Page du Guide : Comprendre l'IA générative",
+      "say": "Petit cadrage avant de plonger : l'IA générative prédit des mots probables à partir de motifs, pas des faits — c'est aussi pour ça qu'elle peut se tromper avec assurance.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-01.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:10 — Ordonner les cinq niveaux d'usage de l'IA",
+      "say": "Glissez ces cinq énoncés dans l'ordre, du plus restrictif (aucune IA du tout) au plus ouvert (IA comme partenaire créatif).",
+      "actions": [
+        {
+          "cmd": "order_load",
+          "file": "order-ai-scale.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:18 — Révéler l'ordre de l'échelle",
+      "say": "Vérifions la réponse ensemble.",
+      "actions": [
+        {
+          "cmd": "order_reveal"
+        }
+      ]
+    },
+    {
+      "name": "0:19 — Page du Guide : Évaluer l'usage de l'IA",
+      "say": "Voici la page du Guide derrière ce qu'on vient de faire, si vous voulez la version complète plus tard.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-02.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:20 — Associer la préoccupation à la discipline",
+      "say": "Différents domaines s'inquiètent de choses différentes en matière d'IA. Glissez chaque préoccupation vers la discipline la plus susceptible de la soulever — quelques pièces sont des leurres.",
+      "actions": [
+        {
+          "cmd": "blanks_load",
+          "file": "blanks-disciplines.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:28 — Révéler les associations",
+      "say": "Vérifions lesquelles sont correctes.",
+      "actions": [
+        {
+          "cmd": "blanks_reveal"
+        }
+      ]
+    },
+    {
+      "name": "0:29 — Page du Guide : Éthique et impact de l'IA",
+      "say": "C'est de cette page que viennent ces préoccupations disciplinaires.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-03.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:30 — Des faits à retenir",
+      "say": "Tour de renforcement rapide — glissez la bonne pièce dans chaque espace. Il y a aussi quelques leurres ici.",
+      "actions": [
+        {
+          "cmd": "blanks_load",
+          "file": "blanks-ai-ethics.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:38 — Révéler les faits",
+      "say": "Voyons le score et lisons le paragraphe complété ensemble.",
+      "actions": [
+        {
+          "cmd": "blanks_reveal"
+        }
+      ]
+    },
+    {
+      "name": "0:39 — Page du Guide : Pratiquer l'IA en classe",
+      "say": "La page derrière la tâche de remaniement que vous allez faire.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-04.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:40 — Remaniement en groupes : former les groupes et montrer la tâche",
+      "say": "Trouvez votre groupe sur cet onglet — la tâche est juste là aussi, et elle restera visible tout le long, même une fois la minuterie lancée.",
+      "actions": [
+        {
+          "cmd": "groups_make",
+          "mode": "size",
+          "param": 4,
+          "pin": true,
+          "prompt": "Prenez 10 minutes pour réfléchir à la façon dont un concept du cours se rattache à un exemple concret, et soyez prêt.e à en discuter.\n\nDans votre groupe, réécrivez ces consignes deux fois :\n\nNiveau 1 — IA seulement pour la planification.\nLa réflexion finale doit être entièrement la pensée propre de l'étudiant.e.\n\nNiveau 3 — IA utilisée de façon extensive.\nL'étudiant.e doit diriger et justifier la façon dont il ou elle l'a utilisée.\n\nAffichez votre version de niveau 3 comme note autocollante sur l'onglet Tableau blanc."
+        }
+      ]
+    },
+    {
+      "name": "0:41 — Démarrer la minuterie",
+      "say": "7 minutes, ça commence maintenant. Passez à l'onglet Tableau blanc quand vous êtes prêt.e.s à afficher votre note — cet écran et la minuterie seront toujours là à votre retour.",
+      "actions": [
+        {
+          "cmd": "timer_set",
+          "minutes": 7
+        },
+        {
+          "cmd": "timer_start"
+        }
+      ]
+    },
+    {
+      "name": "0:48 — Réinitialiser la minuterie après le retour",
+      "say": "Écoutons deux ou trois notes de niveau 3 à voix haute avant de continuer.",
+      "actions": [
+        {
+          "cmd": "timer_reset"
+        }
+      ]
+    },
+    {
+      "name": "0:49 — Pages du Guide : Outils et politiques, Se former",
+      "say": "Deux autres pages à connaître, brièvement — quels outils sont autorisés, et où aller pour se perfectionner.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-05.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:49 (b) — Page du Guide : Se former à l'IA",
+      "say": "Et celle-ci, pour quand vous voudrez approfondir par vous-même.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-06.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:50 — Auto-évaluation de clôture",
+      "say": "Évaluez-vous sur ces critères dès maintenant — personne d'autre ne voit votre nom associé à votre réponse, seulement la forme globale de la salle.",
+      "actions": [
+        {
+          "cmd": "spider_load",
+          "file": "spider-reflection.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "0:57 — Revérifier le point de départ",
+      "say": "Même vérification qu'au début. Voyons si ça a bougé.",
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "traffic"
+        }
+      ]
+    },
+    {
+      "name": "0:58 — Ouvrir la période de questions",
+      "say": "La file de questions anonymes est ouverte — posez n'importe quoi, y compris ce que vous ne vouliez pas dire à voix haute. Je la garderai ouverte après notre départ de la salle.",
+      "actions": [
+        {
+          "cmd": "pin",
+          "target": "qna"
+        }
+      ]
+    },
+    {
+      "name": "0:59 — Page du Guide : Conseil IA du jour",
+      "say": "Une dernière petite chose avant de conclure — un conseil qui change régulièrement se trouve sur la page d'accueil du Guide.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "content-07.json",
+          "pin": true
+        }
+      ]
+    },
+    {
+      "name": "1:00 — Merci / coordonnées",
+      "say": "Merci à tous et toutes. Voici comment retrouver le Guide et me joindre par la suite.",
+      "actions": [
+        {
+          "cmd": "slide_load",
+          "file": "slide-thankyou.json",
+          "pin": true
+        }
+      ]
+    }
+  ]
+}

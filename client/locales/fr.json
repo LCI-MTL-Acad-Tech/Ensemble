@@ -79,6 +79,9 @@
   "blanks_no_exercise": "Aucun exercice chargé pour le moment.",
   "blanks_pool_title": "Pièces",
   "blanks_moved_by": "déplacé par {name}",
+  "blanks_slot_select_title": "Envoyer cette pièce vers un espace numéroté sans glisser",
+  "blanks_slot_select_pool": "—",
+  "blanks_score": "{correct} espace(s) correct(s) sur {total}",
   "blanks_endorse": "Appuyer",
   "blanks_object": "Contester",
   "blanks_completion_title": "Est-ce terminé?",
@@ -171,6 +174,7 @@
 
   "groups_empty": "Aucun groupe pour le moment.",
   "groups_group_label": "Groupe {n}",
+  "groups_prompt_title": "Votre tâche",
   "admin_groups_title": "Groupes aléatoires",
   "admin_groups_mode_label": "Méthode de groupement",
   "admin_groups_mode_size": "Groupes d'une taille fixe",

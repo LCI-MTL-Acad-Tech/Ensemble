@@ -108,11 +108,41 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def _sanitize_qna_for_clients(qna: dict) -> dict:
+    """Strip asker identity before this crosses the WS wire to browsers —
+    questions are anonymous to participants; only the REST-only
+    /api/session endpoint (used by control.py) includes who asked, so
+    `qna list`/`qna watch` can show it to the instructor."""
+    sanitized_questions = {}
+    for qid, q in qna["questions"].items():
+        q2 = dict(q)
+        q2.pop("asker_client_id", None)
+        q2.pop("asker_name", None)
+        sanitized_questions[qid] = q2
+    return {**qna, "questions": sanitized_questions}
+
+
+def raw_state_snapshot() -> dict:
+    """The real, unsanitized state — includes qna asker identity. Used by
+    the REST /api/session endpoint (control.py's data source) and nothing
+    that reaches a browser directly."""
+    return {
+        "name": live.name,
+        "state": live.state,
+        "clients": manager.names,
+    }
+
+
 def full_state_message() -> dict:
+    """The session_state message sent to browsers over the websocket —
+    qna asker identity stripped, since questions are anonymous to
+    participants (see _sanitize_qna_for_clients)."""
+    state_copy = dict(live.state)
+    state_copy["qna"] = _sanitize_qna_for_clients(live.state["qna"])
     return {
         "type": "session_state",
         "name": live.name,
-        "state": live.state,
+        "state": state_copy,
         "clients": manager.names,
     }
 
@@ -337,15 +367,16 @@ async def handle_message(client_id: str, msg: dict) -> None:
         if moderation_list.contains_blocked_word(text):
             await manager.send_to(client_id, {"type": "qna_blocked"})
             return
-        q = live.add_qna_question(text)
+        name = manager.names.get(client_id, "Anonymous")
+        q = live.add_qna_question(text, client_id, name)
         if q:
-            await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+            await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
 
     elif mtype == "qna_react":
         question_id = str(msg.get("question_id", ""))
         reaction = msg.get("reaction")
         if live.react_to_qna_question(question_id, client_id, reaction):
-            await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+            await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
 
     elif mtype == "qna_reply_submit":
         name = manager.names.get(client_id, "Anonymous")
@@ -359,14 +390,14 @@ async def handle_message(client_id: str, msg: dict) -> None:
             return
         reply = live.add_qna_reply(question_id, client_id, name, text, anonymous, from_instructor=False)
         if reply:
-            await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+            await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
 
     elif mtype == "qna_reply_react":
         question_id = str(msg.get("question_id", ""))
         reply_id = str(msg.get("reply_id", ""))
         reaction = msg.get("reaction")
         if live.react_to_qna_reply(question_id, reply_id, client_id, reaction):
-            await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+            await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
 
 
 # ---------------------------------------------------------------- admin API
@@ -424,10 +455,15 @@ class PinRequest(BaseModel):
     target: str
 
 
+class WhiteboardBackgroundRequest(BaseModel):
+    image_url: str
+
+
 class SlideLoadRequest(BaseModel):
     title: str = ""
     text: str = ""
     image_url: str = ""
+    qr_url: str = ""
 
 
 class ModerationLoadRequest(BaseModel):
@@ -471,6 +507,11 @@ class QnaDeleteRequest(BaseModel):
 class GroupsMakeRequest(BaseModel):
     mode: str = "size"  # "size" or "count"
     param: int = 4
+    prompt: str | None = None  # None = keep whatever prompt was already set
+
+
+class GroupsPromptRequest(BaseModel):
+    text: str
 
 
 class TimerSetRequest(BaseModel):
@@ -479,7 +520,7 @@ class TimerSetRequest(BaseModel):
 
 @app.get("/api/session")
 async def get_session():
-    return full_state_message()
+    return raw_state_snapshot()
 
 
 @app.get("/api/admin/action_log")
@@ -564,6 +605,20 @@ async def api_clear_whiteboard():
     return {"ok": True}
 
 
+@app.post("/api/admin/whiteboard/background")
+async def api_whiteboard_background(req: WhiteboardBackgroundRequest):
+    live.set_whiteboard_background(req.image_url)
+    await manager.broadcast({"type": "whiteboard_background", "image_url": req.image_url})
+    return {"ok": True}
+
+
+@app.post("/api/admin/whiteboard/background/clear")
+async def api_whiteboard_background_clear():
+    live.clear_whiteboard_background()
+    await manager.broadcast({"type": "whiteboard_background", "image_url": ""})
+    return {"ok": True}
+
+
 @app.post("/api/admin/blanks/load")
 async def api_load_blanks(req: BlanksLoadRequest):
     live.load_blanks_template(req.title, req.text, req.answers, req.distractors)
@@ -574,6 +629,13 @@ async def api_load_blanks(req: BlanksLoadRequest):
 @app.post("/api/admin/blanks/reset")
 async def api_reset_blanks():
     live.reset_blanks_progress()
+    await manager.broadcast({"type": "blanks_update", "fill_blanks": live.state["fill_blanks"]})
+    return {"ok": True}
+
+
+@app.post("/api/admin/blanks/reveal")
+async def api_reveal_blanks():
+    live.reveal_blanks()
     await manager.broadcast({"type": "blanks_update", "fill_blanks": live.state["fill_blanks"]})
     return {"ok": True}
 
@@ -629,7 +691,7 @@ async def api_clear_pin():
 
 @app.post("/api/admin/slide/load")
 async def api_slide_load(req: SlideLoadRequest):
-    live.load_slide(req.title, req.text, req.image_url)
+    live.load_slide(req.title, req.text, req.image_url, req.qr_url)
     await manager.broadcast({"type": "slide_update", "slide": live.state["slide"]})
     return {"ok": True}
 
@@ -673,49 +735,49 @@ async def api_moderation_reset():
 @app.post("/api/admin/qna/answer")
 async def api_qna_answer(req: QnaModerateRequest):
     live.set_qna_answered(req.question_id, req.answered)
-    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
     return {"ok": True}
 
 
 @app.post("/api/admin/qna/approval")
 async def api_qna_approval(req: QnaApprovalRequest):
     live.set_qna_approval(req.question_id, req.value)
-    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
     return {"ok": True}
 
 
 @app.post("/api/admin/qna/reply")
 async def api_qna_reply(req: QnaReplyRequest):
     live.add_qna_reply(req.question_id, None, "Instructor", req.text, anonymous=False, from_instructor=True)
-    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
     return {"ok": True}
 
 
 @app.post("/api/admin/qna/reply_decision")
 async def api_qna_reply_decision(req: QnaReplyDecisionRequest):
     live.set_qna_reply_decision(req.question_id, req.reply_id, req.value)
-    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
     return {"ok": True}
 
 
 @app.post("/api/admin/qna/reply_delete")
 async def api_qna_reply_delete(req: QnaReplyDeleteRequest):
     live.delete_qna_reply(req.question_id, req.reply_id)
-    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
     return {"ok": True}
 
 
 @app.post("/api/admin/qna/delete")
 async def api_qna_delete(req: QnaDeleteRequest):
     live.delete_qna_question(req.question_id)
-    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
     return {"ok": True}
 
 
 @app.post("/api/admin/qna/clear")
 async def api_qna_clear():
     live.clear_qna()
-    await manager.broadcast({"type": "qna_update", "qna": live.state["qna"]})
+    await manager.broadcast({"type": "qna_update", "qna": _sanitize_qna_for_clients(live.state["qna"])})
     return {"ok": True}
 
 
@@ -726,7 +788,7 @@ async def api_groups_make(req: GroupsMakeRequest):
         for cid, name in manager.names.items()
         if cid in manager.clients
     ]
-    live.make_groups(connected, req.mode, req.param)
+    live.make_groups(connected, req.mode, req.param, req.prompt)
     await manager.broadcast({"type": "groups_update", "groups": live.state["groups"]})
     return {"ok": True}
 
@@ -734,6 +796,13 @@ async def api_groups_make(req: GroupsMakeRequest):
 @app.post("/api/admin/groups/clear")
 async def api_groups_clear():
     live.clear_groups()
+    await manager.broadcast({"type": "groups_update", "groups": live.state["groups"]})
+    return {"ok": True}
+
+
+@app.post("/api/admin/groups/prompt")
+async def api_groups_prompt(req: GroupsPromptRequest):
+    live.set_groups_prompt(req.text)
     await manager.broadcast({"type": "groups_update", "groups": live.state["groups"]})
     return {"ok": True}
 
